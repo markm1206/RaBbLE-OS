@@ -1,0 +1,25 @@
+---
+# ╔══════════════════════════════════════════════════════════╗
+# ║  dev-tools/tasks/vscodium.yml                            ║
+# ║  Adds VSCodium RPM repo and installs the package.        ║
+# ║  Open source VS Code — no telemetry, no Microsoft lock.  ║
+# ║  Extensions via open-vsx.org                             ║
+# ╚══════════════════════════════════════════════════════════╝
+
+- name: Add VSCodium RPM repository
+  ansible.builtin.yum_repository:
+    name: vscodium
+    description: VSCodium RPM Repository
+    baseurl: https://paulcarroty.gitlab.io/vscodium-deb-rpm-repo/rpms/
+    gpgcheck: true
+    gpgkey: https://gitlab.com/paulcarroty/vscodium-deb-rpm-repo/raw/master/pub.gpg
+    enabled: true
+  become: true
+  tags: [dev-tools, vscodium]
+
+- name: Install VSCodium
+  ansible.builtin.dnf:
+    name: codium
+    state: present
+  become: true
+  tags: [dev-tools, vscodium]

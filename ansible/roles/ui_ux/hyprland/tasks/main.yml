@@ -1,0 +1,59 @@
+- name: Define Hyprland package lists
+  set_fact:
+    hyprland_core_packages:
+      - hyprland                       # The compositor
+      - hyprland-devel                 # Needed if you use hyprpm for plugins
+      - xdg-desktop-portal-hyprland    # Essential for screensharing/portals
+      - hyprpaper                      # Official wallpaper daemon
+      - hypridle                       # Official idle daemon
+      - hyprlock                       # Official screen locker
+      - hyprcursor                     # Official cursor management
+      - hyprpicker                     # Official color picker
+      - polkit                         # Generic Polkit
+      - hyprpolkitagent                # Official polkit authentication agent
+
+    wayland_utility_packages:
+      - waybar                         # Status bar (Generic)
+      - mako                           # Notifications (Generic)
+      - fuzzel                         # App launcher (Generic)
+      - grim                           # Screenshot tool (Generic)
+      - slurp                          # Region selector (Generic)
+      - wl-clipboard                   # Clipboard utility (Generic)
+      - cliphist                       # Clipboard history (Generic)
+      - xdg-desktop-portal-gtk         # GTK portal for file pickers
+      - network-manager-applet         # Systray network icon
+      - kanshi                         # Display/Monitor profile manager
+      - wlr-randr                      # Monitor utility
+
+    wayland_qt_support:
+      - qt6-qtwayland                  # Wayland support for Qt6 apps
+      - qt5-qtwayland                  # Wayland support for Qt5 apps
+  tags: [always]
+
+- name: Enable lionheartp/hyprland COPR
+  become: true
+  community.general.copr:
+    name: lionheartp/Hyprland
+    state: enabled
+  tags: [ui_ux, hyprland, repo]
+
+- name: Install Pure Hyprland Ecosystem
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ hyprland_core_packages }}"
+    state: present
+  tags: [ui_ux, hyprland, hyprland_core]
+
+- name: Install General Wayland Utilities
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ wayland_utility_packages }}"
+    state: present
+  tags: [ui_ux, hyprland, utilities]
+
+- name: Install Qt Wayland support
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ wayland_qt_support }}"
+    state: present
+  tags: [ui_ux, hyprland, support]
