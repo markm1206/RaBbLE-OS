@@ -1,4 +1,7 @@
 # ansible/roles/ui_ux/hyprland/tasks/main.yml
+# =============================================================================
+
+# ── Repos ─────────────────────────────────────────────────────────────────────
 
 - name: Enable Hyprland COPR
   community.general.copr:
@@ -6,6 +9,8 @@
     state: enabled
   become: true
   tags: [ui_ux, hyprland, repos]
+
+# ── Packages ──────────────────────────────────────────────────────────────────
 
 - name: Install Hyprland core packages
   ansible.builtin.dnf:
@@ -27,3 +32,90 @@
     state: present
   become: true
   tags: [ui_ux, hyprland, qt]
+
+# ── Config directories ────────────────────────────────────────────────────────
+
+- name: Ensure hypr config directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ hypr_config_dir }}"
+    - "{{ hypr_config_dir }}/conf.d"
+    - "{{ hypr_config_dir }}/scripts"
+  become: false
+  tags: [ui_ux, hyprland, config]
+
+# ── Config files ──────────────────────────────────────────────────────────────
+# Copied from repo — not symlinked — so live edits in the repo do not
+# immediately affect the running system. Re-run the playbook to deploy.
+
+- name: Deploy hypr config files
+  ansible.builtin.copy:
+    src: "{{ dotfiles_repo_root }}/{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "0644"
+    backup: true
+  loop: "{{ hypr_config_files }}"
+  become: false
+  tags: [ui_ux, hyprland, config]
+
+# ── Scripts ───────────────────────────────────────────────────────────────────
+
+- name: Deploy hypr scripts
+  ansible.builtin.copy:
+    src: "{{ dotfiles_repo_root }}/{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "0755"
+    backup: true
+  loop: "{{ hypr_scripts }}"
+  become: false
+  tags: [ui_ux, hyprland, config]
+
+# ── Lock / idle / suspend chain ───────────────────────────────────────────────
+
+- name: Ensure logind drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/logind.conf.d
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+  become: true
+  tags: [ui_ux, hyprland, lock]
+
+- name: Deploy logind lid-switch drop-in
+  ansible.builtin.copy:
+    src: "{{ dotfiles_repo_root }}/config/system/logind/99-hyprland-lid.conf"
+    dest: /etc/systemd/logind.conf.d/99-hyprland-lid.conf
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  become: true
+  notify: Restart systemd-logind
+  tags: [ui_ux, hyprland, lock]
+
+- name: Notify that logind was reloaded
+  ansible.builtin.debug:
+    msg: >
+      logind config reloaded. Lid switch behaviour is now active.
+      NOTE: If this is the first deploy on a live session, log out and
+      back in once to ensure the new session inherits the updated config.
+  tags: [ui_ux, hyprland, lock]
+
+- name: Verify hyprlock PAM config is present
+  ansible.builtin.stat:
+    path: /etc/pam.d/hyprlock
+  register: pam_hyprlock
+  tags: [ui_ux, hyprland, lock]
+
+- name: Warn if hyprlock PAM config is missing
+  ansible.builtin.debug:
+    msg: >
+      WARNING: /etc/pam.d/hyprlock not found — hyprlock cannot authenticate.
+      This should have been installed with the hyprlock package.
+      Run: sudo dnf reinstall hyprlock
+  when: not pam_hyprlock.stat.exists
+  tags: [ui_ux, hyprland, lock]

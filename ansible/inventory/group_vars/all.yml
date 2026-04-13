@@ -6,11 +6,15 @@
 # =============================================================================
 
 # ── Identity ──────────────────────────────────────────────────────────────────
-rabble_user:      "{{ ansible_user_id }}"
-rabble_home:      "{{ ansible_env.HOME }}"
+# ansible_user is set in hosts.yml via lookup('env', 'USER') at inventory
+# parse time — before become: true elevates to root — so these resolve
+# correctly to the invoking user regardless of privilege escalation.
+rabble_user: "{{ ansible_user }}"
+rabble_home: "/home/{{ ansible_user }}"
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 rabble_config_home:  "{{ rabble_home }}/.config"
+dotfiles_repo_root:  "{{ rabble_repo_root }}"
 
 # ── Theme palette — synthwave ─────────────────────────────────────────────────
 rabble_color_bg:      "#0a0010"   # Deep void
