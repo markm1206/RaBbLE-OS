@@ -8,7 +8,9 @@ spark ~ bootstrap-organ >> initiating first-contact sequence // %ENTITY_DORMANT%
 
 ## Overview
 
-The bootstrap system is an interactive shell-based entry point for deploying and managing RaBbLE-OS. It wraps Ansible playbooks in a navigable menu interface, so you work with layers rather than raw playbook invocations. It is the primary tool for both fresh installs and ongoing maintenance.
+The bootstrap system is an interactive shell-based entry point for deploying and managing RaBbLE-OS. It wraps Ansible playbooks in a navigable menu interface, so you work with layers rather than raw playbook invocations.
+
+**Current scope:** The bootstrap script handles Ansible installation and pre-flight checks. Full menu-driven layer deployment is a work in progress — direct Ansible invocation is the reliable path for now.
 
 ```
 bootstrap.sh           ← entry point — run this
@@ -32,55 +34,100 @@ bootstrap/
 
 | Requirement | Notes |
 |---|---|
-| Fedora 43 installed | KDE spin or minimal — both work |
+| Fedora 43 KDE spin installed | KDE used as bootstrap base — purged after Hyprland is stable |
+| System fully updated | Run `sudo dnf upgrade --refresh -y` before bootstrapping |
 | Internet access | For DNF packages and COPR repos |
-| `git` | To clone the repo |
+| `git` installed | `sudo dnf install git -y` |
 | `sudo` access | For Ansible playbook execution |
 
-**Strongly recommended:** Take a Btrfs snapshot before any significant deployment step.
-
-```bash
-sudo snapper -c root create --description "pre-rabble-bootstrap"
-```
-
 ---
 
-## First Run — Fresh Install
+## Ansible Installation
+
+The bootstrap script installs Ansible via pipx. This provides a more current version than the DNF-packaged Ansible and avoids Python environment conflicts.
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/markm1206/RaBbLE-OS.git ~/RaBbLE-OS
-cd ~/RaBbLE-OS
+# Run the bootstrap and select the Ansible install option
+bash bootstrap.sh
 
-# 2. Install Ansible (bootstrap handles this if not present)
-sudo dnf install ansible ansible-core python3-dnf -y
+# Or install manually:
+sudo dnf install pipx -y
+pipx install --include-deps ansible
+pipx ensurepath
+source ~/.bashrc
+
+# Install required collections
 ansible-galaxy collection install community.general
 
-# 3. Run the bootstrap
-bash bootstrap.sh
+# Verify
+ansible --version
 ```
 
-The bootstrap will present the main menu.
+> **`--include-deps` is required.** Without it, Ansible installs without some dependent
+> packages and certain modules will fail silently.
 
 ---
 
-## Menu Structure
+## Direct Ansible Invocation
+
+The most reliable way to deploy layers. Use these directly rather than the menu for any serious work:
+
+```bash
+# Full system deploy
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K
+
+# Individual layers by tag
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags core
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags hardware
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags ui_ux
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags dev-tools
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags purge-kde
+
+# Single role via tag
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags hyprland
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags grub
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags sddm
+
+# Config symlinks only
+ansible-playbook -i ansible/inventory/hosts.yml ansible/deploy-config.yml -K
+
+# Dry run (no changes applied)
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --check --diff
+```
+
+---
+
+## Playbook Reference
+
+| Playbook | What it does |
+|---|---|
+| `site.yml` | Full system deploy — runs all roles in order |
+| `deploy-boot.yml` | Boot chain only: GRUB2 + Plymouth + SDDM |
+| `deploy-hardware.yml` | Hardware layer: GPU drivers, asusctl, NPU, audio |
+| `deploy-ui.yml` | UI/UX layer: Hyprland, terminal, shell |
+| `deploy-config.yml` | Symlink configs from `config/` into `~/.config/` |
+| `pull-config.yml` | Pull config changes back from `~/.config/` into repo |
+
+---
+
+## Menu Structure (Target State)
+
+The bootstrap menu is being rebuilt. This documents the intended structure — not all options are currently functional.
 
 ### Main Menu
 
 ```
 RaBbLE-OS Bootstrap
 ────────────────────────────────
-  1. Deploy by layer
-  2. Deploy full system
-  3. Dotfiles only
-  4. Recovery tools
-  5. Exit
+  1. Install Ansible
+  2. Pre-flight checks
+  3. Deploy by layer
+  4. Deploy full system
+  5. Recovery tools
+  6. Exit
 ```
 
 ### Deploy by Layer
-
-Select individual layers to deploy. Useful for incremental setup or re-applying a single layer after changes:
 
 ```
 Deploy by Layer
@@ -88,9 +135,10 @@ Deploy by Layer
   1. Core (base system, repos, fonts)
   2. Hardware layer → [submenu]
   3. Boot layer    → [submenu]
-  4. Snapper (Btrfs snapshots)
-  5. UI/UX layer   → [submenu]
-  6. ← Back
+  4. UI/UX layer   → [submenu]
+  5. Dev tools
+  6. Purge KDE
+  7. ← Back
 ```
 
 ### Boot Layer Submenu
@@ -124,49 +172,11 @@ UI/UX Layer
   1. Deploy all UI components
   2. Hyprland only
   3. Quickshell only
-  4. Shell (zsh + bash)
-  5. Terminal (foot + kitty)
-  6. Re-link dotfiles
+  4. Shell (zsh)
+  5. Terminal (kitty)
+  6. Re-link configs
   7. ← Back
 ```
-
----
-
-## Direct Ansible Invocation
-
-If you prefer to bypass the menu and run playbooks directly:
-
-```bash
-# Full system deploy
-sudo ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K
-
-# Single playbook
-sudo ansible-playbook -i ansible/inventory/hosts.yml ansible/deploy-boot.yml -K
-sudo ansible-playbook -i ansible/inventory/hosts.yml ansible/deploy-hardware.yml -K
-sudo ansible-playbook -i ansible/inventory/hosts.yml ansible/deploy-ui.yml -K
-sudo ansible-playbook -i ansible/inventory/hosts.yml ansible/deploy-dotfiles.yml -K
-
-# Single role via tag
-sudo ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags grub
-sudo ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags sddm
-sudo ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags hyprland
-
-# Dry run (no changes)
-sudo ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --check --diff
-```
-
----
-
-## Playbook Reference
-
-| Playbook | What it does |
-|---|---|
-| `site.yml` | Full system deploy — runs all roles in order |
-| `deploy-boot.yml` | Boot chain only: GRUB2 + Plymouth + SDDM |
-| `deploy-hardware.yml` | Hardware layer: GPU drivers, asusctl, NPU, audio |
-| `deploy-ui.yml` | UI/UX layer: Hyprland, Quickshell, terminal, shell |
-| `deploy-dotfiles.yml` | Symlink dotfiles into ~/.config/ |
-| `pull-dotfiles.yml` | Pull dotfile changes back from ~/.config/ into repo |
 
 ---
 
@@ -175,15 +185,13 @@ sudo ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --check
 Run these after a fresh deploy to confirm everything is operational:
 
 ```bash
-# Boot chain
-plymouth-set-default-theme          # should show 'rabble'
-grub2-editenv list | grep theme     # should show rabble theme path
-systemctl status sddm               # SDDM running
-
-# Hyprland (run from inside Hyprland session)
-hyprctl version
+# Hyprland
+hyprctl version                     # should show v0.54+
 hyprctl monitors                    # display config
 hyprctl clients                     # running clients
+
+# Boot chain
+systemctl status sddm               # SDDM running
 
 # Hardware
 asusctl profile -l                  # power profiles listed
@@ -200,15 +208,15 @@ lsmod | grep amdxdna                # amdxdna loaded
 
 ## Recovery Mode
 
-If Hyprland fails to start, you can recover from the SDDM session selector (choose KDE Plasma) or from a TTY:
+If Hyprland fails to start and KDE has not been purged, select **KDE Plasma** from the SDDM session list to recover. If KDE has been purged, drop to a TTY:
 
 ```bash
 # TTY access: Ctrl+Alt+F2 (or F3, F4...)
 
-# Re-run just the dotfiles to fix symlinks
-ansible-playbook -i ansible/inventory/hosts.yml ansible/deploy-dotfiles.yml -K
+# Re-link configs to fix symlinks
+ansible-playbook -i ansible/inventory/hosts.yml ansible/deploy-config.yml -K
 
-# Check Hyprland config for errors
+# Check Hyprland config for syntax errors
 hyprland --config ~/.config/hypr/hyprland.conf
 
 # Force AMD GPU as compositor (if Hyprland starts but screen is wrong)
@@ -216,25 +224,12 @@ export AQ_DRM_DEVICES=/dev/dri/by-path/pci-0000:65:00.0-card
 hyprland
 ```
 
-> ⚠️ **GPU management note:** Keep GPU-related env vars in `machine.conf` (Ansible-templated), not in the main `hyprland.conf`. A broken GPU config in the main conf can prevent SDDM from launching Hyprland at all.
+> ⚠️ **GPU management note:** Keep GPU-related env vars in `machine.conf` (Ansible-templated),
+> not in the main `hyprland.conf`. A broken GPU config in the main conf can prevent SDDM
+> from launching Hyprland at all — and with KDE purged, that means TTY recovery only.
 
----
-
-## Snapper Snapshot Workflow
-
-```bash
-# Create a named snapshot before major changes
-sudo snapper -c root create --description "pre-nvidia-driver"
-
-# List snapshots
-sudo snapper -c root list
-
-# Roll back to a snapshot (from live system or TTY)
-sudo snapper -c root undochange <snapshot_number>..0
-
-# Boot into a snapshot (from GRUB — grub-btrfs must be installed)
-# Select "Fedora Linux snapshots" from GRUB menu
-```
+> ⚠️ **Hyprland config syntax:** As of v0.54, `windowrulev2` is removed. If you pull config
+> from an older branch, check for this directive before reloading.
 
 ---
 

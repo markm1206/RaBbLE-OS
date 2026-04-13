@@ -23,7 +23,7 @@ The Ansible role structure directly mirrors the layer model.
 Layer 0 — BASE          Any Linux system. Packages, locale, repos, core tools.
 Layer 1 — HARDWARE      Machine-specific. GPU drivers, power management, platform quirks.
 Layer 2 — BOOT CHAIN    GRUB → Plymouth → Session Manager. Visual continuity, fast boot.
-Layer 3 — DESKTOP       Hyprland, dotfiles, Wayland stack, synthwave theme.
+Layer 3 — DESKTOP       Hyprland, config, Wayland stack, synthwave theme.
 Layer 4 — APPS          Dev tools, AI stack, productivity tooling.
 Layer 5 — ENTITY        RaBbLE AI layer. Inference, memory, ambient presence. (Future)
 ```
@@ -47,7 +47,10 @@ Layer 3 — ui_ux/
             terminal/
             shell/zsh/
             shell/bash/
-Infra    — snapper/                  (cross-cutting, not a user-facing layer)
+Layer 4 — dev-tools/
+            main/
+            vscodium/
+Infra    — purge-kde/               (run once on KDE spin base — removes Plasma)
 ```
 
 ---
@@ -58,7 +61,7 @@ Infra    — snapper/                  (cross-cutting, not a user-facing layer)
 site.yml
 │
 ├── core                          (all hosts, always first)
-│   └── packages, repos, XDG dirs, env vars, fonts
+│   └── packages, repos, locale, fonts, user groups, fstrim
 │
 ├── hardware/x64/asus_proart_p16  (conditional: asus_proart_p16 group)
 │   ├── firmware       (fwupd)
@@ -67,10 +70,11 @@ site.yml
 │   ├── asusctl        (asusd daemon)
 │   ├── npu            (XDNA kernel module check, ONNX runtime)
 │   ├── power          (power-profiles-daemon)
-│   └── audio          (pipewire + wireplumber)
+│   ├── audio          (pipewire + wireplumber)
+│   └── nvidia_defer   (blacklist NVIDIA from initramfs, load at graphical.target)
 │
 ├── boot/grub2                    (packages, theme files, /etc/default/grub, vconsole)
-│   handler: grub2-mkconfig, dracut
+│   handler: grub2-mkfont, grub2-mkconfig, dracut
 │
 ├── boot/plymouth                 (packages, theme files, set-default-theme)
 │   handler: dracut
@@ -78,15 +82,15 @@ site.yml
 ├── boot/session_manager          (SDDM, QML theme, wayland-sessions/hyprland.desktop)
 │   handler: systemctl restart sddm
 │
-├── snapper                       (btrfs-only: config, timeline timer, grub-btrfs)
+├── purge-kde                     (remove Plasma packages — run once on KDE spin base)
 │
 └── ui_ux/
-    ├── hyprland       (packages, symlink dotfiles/hyprland → ~/.config/hypr,
+    ├── hyprland       (packages via lionheartp COPR, symlink config/hyprland → ~/.config/hypr,
     │                   template machine.conf)
-    ├── quickshell     (build from source if needed, symlink dotfiles/quickshell)
-    ├── terminal       (foot, kitty, nerd fonts)
-    ├── shell/zsh      (zinit, p10k, ZDOTDIR, symlink dotfiles/shell/zsh)
-    └── shell/bash     (starship, symlink dotfiles/shell/bash)
+    ├── quickshell     (build from source if needed, symlink config/quickshell)
+    ├── terminal       (kitty, nerd fonts — kitty also provided by lionheartp COPR)
+    ├── shell/zsh      (zinit, starship, ZDOTDIR, symlink config/shell/zsh)
+    └── shell/bash     (starship, symlink config/shell/bash)
 ```
 
 ---
@@ -115,9 +119,11 @@ Power on
   └── GRUB2              ← boot/grub2      synthwave theme, HiDPI font, 3840x2400
         └── Kernel loads
               └── Plymouth ← boot/plymouth  void bg + magenta RaBbLE text + spinner
+                            (NVIDIA not loaded — no DRM reset, no black flash)
                     └── SDDM ← boot/session_manager  QML theme, Wayland-native greeter
-                          └── Hyprland ← ui_ux/hyprland  dotfiles + machine.conf
-                                └── Quickshell / Waybar  bar + launcher + widgets
+                          └── NVIDIA loads  ← nvidia_defer.service at graphical.target
+                                └── Hyprland ← ui_ux/hyprland  config + machine.conf
+                                      └── Waybar → Quickshell (Phase 1)
 ```
 
 Each stage hands off visually — same palette, same font family, no jarring transitions.
@@ -136,7 +142,7 @@ AMD Radeon 890M (iGPU)                  NVIDIA RTX 4060 Mobile (dGPU)
   Compositor: Hyprland                    (DRI_PRIME=pci-0000_64_00_0 <cmd>)
   AQ_DRM_DEVICES=                          CUDA available always
     pci-0000:65:00.0-card                  No direct display output in Hybrid mode
-        │
+        │                                  Loads at graphical.target — not initramfs
   [eDP-1: 3840×2400 @60Hz, scale 2×]
 ```
 
@@ -165,16 +171,31 @@ Sleep path: `systemctl suspend` → systemd-sleep hooks → NVIDIA VRAM preserve
 
 | Component | Tool | Role | Keybind |
 |---|---|---|---|
-| Compositor | Hyprland | Primary WM | — |
+| Compositor | Hyprland v0.54+ | Primary WM | — |
 | Status bar | Waybar → Quickshell (Phase 1) | System HUD | — |
-| App launcher | wofi | Application menu | `$mod+Space` |
+| App launcher | fuzzel | Application menu | `$mod+Space` |
 | Notifications | mako | Wayland-native daemon | — |
 | Lock screen | hyprlock | Screen lock | `$mod+Escape` |
 | Idle daemon | hypridle | Auto-lock/suspend | — |
 | Wallpaper | hyprpaper | Static/animated wallpaper | — |
 | Screenshot | grim + slurp | Region/full capture | `Print` / `Shift+Print` |
-| Clipboard | wl-clipboard | Copy/paste primitives | — |
-| Auth agent | polkit-kde-agent-1 | Privilege dialogs | — |
+| Clipboard | wl-clipboard + cliphist | Copy/paste + history | — |
+| Auth agent | hyprpolkitagent | Privilege dialogs | — |
+| Display profiles | kanshi | Auto monitor switching | — |
+
+---
+
+## Hyprland Version Notes
+
+Current version: **v0.54** (lionheartp COPR, March 2026)
+
+**Breaking change from v0.51 → v0.54:**
+- `windowrulev2` directive removed — unified into `windowrule`
+- Matcher syntax is identical; only the directive name changed
+- `windowrules.conf` and `workspaces.conf` updated accordingly
+- Old `windowrulev2 = rule, class:^(app)$` → `windowrule = rule, class:^(app)$`
+
+**COPR:** `lionheartp/Hyprland` — replaces the previously used `solopasha/hyprland`
 
 ---
 
@@ -226,26 +247,26 @@ Changing any value in `all.yml` propagates everywhere at next Ansible run. See `
 
 ---
 
-## Dotfile Symlink Map
+## Config Symlink Map
 
-All user configs live as static files in `dotfiles/` and are symlinked by Ansible into `~/.config/`. Edit the repo file — the symlink keeps `~/.config/` in sync automatically.
+All user configs live as static files in `config/` and are symlinked by Ansible into `~/.config/`. Edit the repo file — the symlink keeps `~/.config/` in sync automatically.
 
 | Repo path | Deployed to |
 |---|---|
-| `dotfiles/hyprland/hyprland.conf` | `~/.config/hypr/hyprland.conf` |
-| `dotfiles/hyprland/conf.d/` | `~/.config/hypr/conf.d/` |
-| `dotfiles/hyprland/scripts/` | `~/.config/hypr/scripts/` |
-| `dotfiles/quickshell/shell.qml` | `~/.config/quickshell/shell.qml` |
-| `dotfiles/quickshell/bar/` | `~/.config/quickshell/bar/` |
-| `dotfiles/quickshell/launcher/` | `~/.config/quickshell/launcher/` |
-| `dotfiles/quickshell/widgets/` | `~/.config/quickshell/widgets/` |
-| `dotfiles/shell/zsh/aliases.zsh` | `~/.config/zsh/aliases.zsh` |
-| `dotfiles/shell/zsh/functions.zsh` | `~/.config/zsh/functions.zsh` |
-| `dotfiles/shell/zsh/p10k.zsh` | `~/.config/zsh/p10k.zsh` |
-| `dotfiles/shell/bash/aliases.sh` | `~/.bash_aliases` |
-| `dotfiles/shell/starship.toml` | `~/.config/starship.toml` |
-| `dotfiles/shell/foot.ini` | `~/.config/foot/foot.ini` |
-| `dotfiles/shell/mako.conf` | `~/.config/mako/config` |
+| `config/hyprland/hyprland.conf` | `~/.config/hypr/hyprland.conf` |
+| `config/hyprland/conf.d/` | `~/.config/hypr/conf.d/` |
+| `config/hyprland/scripts/` | `~/.config/hypr/scripts/` |
+| `config/quickshell/shell.qml` | `~/.config/quickshell/shell.qml` |
+| `config/quickshell/bar/` | `~/.config/quickshell/bar/` |
+| `config/quickshell/launcher/` | `~/.config/quickshell/launcher/` |
+| `config/quickshell/widgets/` | `~/.config/quickshell/widgets/` |
+| `config/shell/zsh/aliases.zsh` | `~/.config/zsh/aliases.zsh` |
+| `config/shell/zsh/functions.zsh` | `~/.config/zsh/functions.zsh` |
+| `config/shell/starship.toml` | `~/.config/starship.toml` |
+| `config/shell/kitty/kitty.conf` | `~/.config/kitty/kitty.conf` |
+| `config/shell/mako.conf` | `~/.config/mako/config` |
+| `config/waybar/config.jsonc` | `~/.config/waybar/config.jsonc` |
+| `config/waybar/style.css` | `~/.config/waybar/style.css` |
 
 **Not symlinked — machine-local, Ansible-templated:**
 
@@ -258,8 +279,7 @@ All user configs live as static files in `dotfiles/` and are symlinked by Ansibl
 | `/etc/sddm.conf.d/rabble.conf` | `roles/boot/session_manager/templates/sddm.conf.j2` |
 | `/etc/sddm.conf.d/hidpi.conf` | `roles/boot/session_manager/templates/sddm-hidpi.conf.j2` |
 | `/etc/supergfxd.conf` | `roles/hardware/x64/asus_proart_p16/templates/supergfxd.conf.j2` |
-| `/etc/snapper/configs/root` | `roles/snapper/templates/snapper-root.conf.j2` |
-| `/etc/snapper/configs/home` | `roles/snapper/templates/snapper-home.conf.j2` |
+| `/etc/modprobe.d/rabble-nvidia-defer.conf` | `roles/hardware/x64/asus_proart_p16/templates/nvidia-defer.conf.j2` |
 
 ---
 
@@ -285,18 +305,10 @@ cat /sys/class/power_supply/BAT*/capacity  # battery %
 
 # SDDM theme testing (without reboot)
 sddm-greeter-qt6 --test-mode --theme /usr/share/sddm/themes/rabble
+
+# Hyprland version
+hyprctl version                            # confirm v0.54+
 ```
-
----
-
-## Snapshot Strategy
-
-Snapper manages Btrfs snapshots of both `root` and `home` subvolumes:
-
-- Snapshots are **not** created on every Ansible run — only when `--tags snapshot` is passed
-- Timeline: 3 daily, 1 weekly
-- Snapshot #1 is the KDE baseline — preserved as the original system state reference
-- Home has a separate snapper config
 
 ---
 

@@ -6,6 +6,9 @@ spark ~ bootstrap-organ >> first contact sequence // %ENTITY_DORMANT%
 
 > Read `RaBbLE.md` before proceeding. The philosophy governs every decision.
 > This is not optional.
+>
+> For a detailed record of the manual bootstrap process as validated on a real install,
+> see `ManualInstallProcess.md`.
 
 ---
 
@@ -14,7 +17,7 @@ spark ~ bootstrap-organ >> first contact sequence // %ENTITY_DORMANT%
 | Requirement | Spec | Notes |
 |---|---|---|
 | **Hardware** | x86_64, 16 GB+ RAM, 512 GB+ NVMe | Primary target: ASUS ProArt P16 H7606WV |
-| **OS** | Fedora Linux 43 installed | KDE spin or minimal base both work |
+| **OS** | Fedora Linux 43 KDE spin | KDE spin used as bootstrap base — purged after Hyprland is stable |
 | **Filesystem** | Btrfs (root + home subvolumes) | Fedora default — accept it during install |
 | **Internet** | Stable broadband | Required for COPR repos, package downloads |
 | **Sudo access** | Required | Ansible needs it for system changes |
@@ -23,17 +26,19 @@ spark ~ bootstrap-organ >> first contact sequence // %ENTITY_DORMANT%
 
 ## Phase 0: Install Fedora 43
 
-Download Fedora 43 from [fedoraproject.org](https://fedoraproject.org/workstation/download).
+Download Fedora 43 KDE spin from [fedoraproject.org](https://fedoraproject.org/spins/kde).
 
 **Installer settings:**
 - Filesystem: **btrfs** (accept the Fedora default — do not change to ext4)
 - Partition layout: let Fedora create the default `root` and `home` subvolumes
 - Hostname: set something meaningful — this becomes your Ansible inventory hostname
+- Username: `rabble` (or your preferred username — update `ansible_user` in inventory)
 
-After install, verify you have two Btrfs subvolumes:
+After install, update the full system before touching anything else:
+
 ```bash
-sudo btrfs subvolume list /
-# Should show both 'root' and 'home' subvolumes
+sudo dnf upgrade --refresh -y
+sudo reboot
 ```
 
 ---
@@ -41,45 +46,82 @@ sudo btrfs subvolume list /
 ## Phase 1: Bootstrap the Substrate
 
 ```bash
+# Install git
+sudo dnf install git -y
+
 # Clone the repository
 git clone https://github.com/markm1206/RaBbLE-OS.git ~/RaBbLE-OS
 cd ~/RaBbLE-OS
 
-# Install Ansible
-sudo dnf install ansible ansible-core python3-dnf -y
+# Run the bootstrap — select Ansible install from the menu
+# or install manually:
+sudo dnf install pipx -y
+pipx install --include-deps ansible
+pipx ensurepath
+source ~/.bashrc   # reload PATH so ansible is available
+
+# Install required Ansible collections
 ansible-galaxy collection install community.general
 
-# Take a snapshot before touching anything
-sudo dnf install snapper btrfs-progs -y
-sudo snapper -c root create-config /
-sudo snapper -c root create --description "pre-rabble-baseline"
-
-# Run the bootstrap
-bash bootstrap.sh
+# Verify Ansible is available
+ansible --version
 ```
 
-The bootstrap presents an interactive menu. For a fresh install, the recommended sequence is:
-
-1. **Core** — base packages, repos, locale, fonts
-2. **Hardware** → ASUS ProArt P16 *(or your target)*
-3. **Reboot** after hardware layer (nouveau must unload, akmod-nvidia must build)
-4. **Boot layer** — GRUB2 + Plymouth + SDDM
-5. **Snapper** — configure snapshot policies
-6. **UI/UX** — Hyprland, shell, terminal, dotfiles
+> **Why pipx?** The bootstrap installs Ansible via pipx to get the latest version
+> rather than the DNF-packaged version, which may lag behind. The `--include-deps`
+> flag is required — without it, some Ansible modules are missing.
 
 ---
 
-## Phase 2: First Boot into Hyprland
+## Phase 2: Run the Layers
 
-After the UI/UX layer deploys, log out of KDE (or reboot) and select **Hyprland** from the SDDM session list.
+The recommended deployment sequence for a fresh install. Each layer builds on the one before it.
+
+### Step 1 — Core
+```bash
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags core
+```
+Installs base packages, RPM Fusion repos, sets locale, configures DNF, adds user groups, enables fstrim.
+
+### Step 2 — Hardware
+```bash
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags hardware
+# Reboot after this step — nouveau must unload, akmod-nvidia must build
+sudo reboot
+```
+
+### Step 3 — UI/UX (Hyprland)
+```bash
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags ui_ux
+```
+Installs Hyprland from the lionheartp COPR, Waybar, fuzzel, mako, and all Wayland utilities. Symlinks configs from `config/` into `~/.config/`.
+
+### Step 4 — Dev Tools
+```bash
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags dev-tools
+```
+Installs CLI tools, monitoring utilities, neovim, VSCodium.
+
+### Step 5 — Purge KDE (optional — KDE spin only)
+```bash
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags purge-kde
+sudo reboot
+```
+Removes Plasma packages. Safe to skip if you want KDE as a fallback session.
+
+---
+
+## Phase 3: First Boot into Hyprland
+
+Log out of KDE (or reboot after purge-kde) and select **Hyprland** from the SDDM session list.
 
 **Verify the environment:**
 ```bash
+# Hyprland version (should show v0.54+)
+hyprctl version
+
 # Monitor configuration (should show 3840x2400 @ 60Hz, scale 2)
 hyprctl monitors
-
-# GPU compositor (should show AMD 890M)
-hyprctl dispatch exec -- glxinfo | grep renderer
 
 # NVIDIA PRIME offload available
 DRI_PRIME=pci-0000_64_00_0 glxinfo | grep renderer   # should show RTX 4060
@@ -94,46 +136,45 @@ supergfxctl --status       # GPU mode (Hybrid)
 
 ---
 
-## Phase 3: Shell & Editor
+## Phase 4: Shell
 
 ```bash
-# Set zsh as default shell (if not already)
+# Set zsh as default shell
 chsh -s $(which zsh)
 
-# Re-link dotfiles if needed
-ansible-playbook -i ansible/inventory/hosts.yml ansible/deploy-dotfiles.yml -K
+# Re-link configs if needed
+ansible-playbook -i ansible/inventory/hosts.yml ansible/deploy-config.yml -K
 
-# Verify zsh prompt
-exec zsh    # should load p10k theme
+# Reload shell
+exec zsh    # should load starship prompt
 ```
 
-**Neovim** is the target terminal based editor. Configuration is pending (see `RaBbLE-Roadmap.md` Phase 1.3). For now, VSCodium or Nano work as fallbacks.
+**Neovim** is the target terminal editor — configuration pending (see `RaBbLE-Roadmap.md` Phase 1.3). VSCodium or nano work as fallbacks in the meantime.
 
-**VSCodium** is the primary GUI based IDE for generic development. Plugins should also be part of the VSCodium RaBbLE-OS packages.
 ---
 
-## Working with Dotfiles
+## Working with Configs
 
-All configs are static files in `dotfiles/` symlinked into `~/.config/`. Edit the repo file — the symlink keeps things in sync with no copy step:
+All configs are static files in `config/` symlinked into `~/.config/`. Edit the repo file — the symlink keeps things in sync with no copy step:
 
 ```bash
 # Edit hyprland config
-$EDITOR ~/RaBbLE-OS/dotfiles/hyprland/conf.d/keybinds.conf
+$EDITOR ~/RaBbLE-OS/config/hyprland/conf.d/keybinds.conf
 hyprctl reload   # live reload, no logout needed
 
 # Edit zsh config
-$EDITOR ~/RaBbLE-OS/dotfiles/shell/zsh/aliases.zsh
+$EDITOR ~/RaBbLE-OS/config/shell/zsh/aliases.zsh
 exec zsh         # reload shell
 
 # Commit your changes
 cd ~/RaBbLE-OS
-git add dotfiles/
+git add config/
 git commit -m "transcribe ~ hyprland >> updated keybindings // %CONFIG_EVOLVED%"
 ```
 
 ---
 
-## Phase 4: AI Tooling (Phase 2 — Future)
+## Phase 5: AI Tooling (Phase 2 — Future)
 
 AI stack deployment is controlled by `ai_stack.phase` in `ansible/inventory/group_vars/all.yml`.
 
@@ -145,10 +186,10 @@ AI stack deployment is controlled by `ai_stack.phase` in `ansible/inventory/grou
 # To advance:
 # 1. Edit ansible/inventory/group_vars/all.yml → ai_stack.phase: 1
 # 2. Re-run:
-ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags AI-tools
+ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K --tags ai-tools
 ```
 
-See ROADMAP.md Phase 2 and the AI stack section of DistilledNonZense.md for full detail.
+See `RaBbLE-Roadmap.md` Phase 2 and the AI stack section of `DistilledNonZense.md` for full detail.
 
 ---
 
@@ -171,9 +212,8 @@ journalctl -b -u systemd-suspend   # last suspend logs
 systemctl status asusd
 journalctl -u asusd --since "10 min ago"
 
-# Roll back to pre-install snapshot
-sudo snapper -c root list
-sudo snapper -c root undochange <N>..0
+# Config symlinks broken — re-run deploy
+ansible-playbook -i ansible/inventory/hosts.yml ansible/deploy-config.yml -K
 ```
 
 ---
