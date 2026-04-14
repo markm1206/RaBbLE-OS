@@ -129,7 +129,7 @@
 # ── User groups ───────────────────────────────────────────────────────────────
 - name: Ensure user is in required system groups
   ansible.builtin.user:
-    name: "{{ ansible_user_id }}"
+    name: "{{ ansible_facts['user_id'] }}"
     groups:
       - wheel   # sudo access
       - audio   # audio device access — PipeWire/ALSA
