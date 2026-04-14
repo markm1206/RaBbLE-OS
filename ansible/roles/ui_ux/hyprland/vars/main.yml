@@ -62,8 +62,6 @@ hypr_scripts:
     dest: "{{ hypr_config_dir }}/scripts/help.sh"
   - src:  config/hypr/scripts/screenshot.sh
     dest: "{{ hypr_config_dir }}/scripts/screenshot.sh"
-  - src:  config/hypr/scripts/toggle-orientation.sh
-    dest: "{{ hypr_config_dir }}/scripts/toggle-orientation.sh"
 
 # ── Packages ──────────────────────────────────────────────────────────────────
 
