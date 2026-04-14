@@ -50,6 +50,7 @@
       - lm_sensors    # Hardware sensor readings — temps, fan speeds, voltages
       - nvtop         # GPU process monitor — works with AMD and NVIDIA
       - powertop      # Intel/AMD power usage analyser — identify power hogs
+      - wev            # Wayland event viewer — inspect keycodes, button events, axis input
     state: present
   become: true
   tags: [dev-tools, monitoring]

@@ -16,10 +16,12 @@
   gather_facts: true
 
   roles:
+  
 
     # ── Core / base system ──────────────────────────────────────────────────
     - role: core
       tags: [core]
+      become: true
 
     # ── UI / UX ─────────────────────────────────────────────────────────────
     - role: ui_ux/hyprland
