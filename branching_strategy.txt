@@ -1,0 +1,33 @@
+RaBbLE-OS branches
+
+Main
+    Pure state. Must work. Mainly docs + scripts
+
+RaBbLE-OS-Bootstrap
+    bootstraps a default Fedora 43 spin to become RaBbLE-OS
+    uses Shell scripts and Ansible to deploy RaBbLE-OS onto base system
+
+    Initial Base Fedora KDE -> Moving to Fedora Sway Spin as minimum Base
+
+
+    Core utils
+    lionheartp/Hyprland COPR
+
+RaBbLE-OS-UX
+    Branch tree for testing and editing UX config and features
+
+RaBbLE-OS-System
+    Branch tree for OS/System features
+
+
+Work to consolidate onto new branches. 
+
+BaBbLE branch should be purged at the end. 
+
+Also purge the KDE RaBbLE OS on my system.
+
+Single Grub2 deployment for RaBbLE-OS
+
+ML4W breaks the system.
+
+

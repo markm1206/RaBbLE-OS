@@ -1,0 +1,13 @@
+---
+# =============================================================================
+# Hardware Role — Kernel Modules, Firmware, Platform Drivers
+# =============================================================================
+
+# - name: Apply AMD NPU kernel configuration
+#   ansible.builtin.import_tasks: amd-npu.yml
+#   tags: [hardware, npu]
+
+- name: Apply vendor-specific hardware configuration
+  ansible.builtin.include_tasks: "vendors/{{ hardware_vendor }}.yml"
+  when: hardware_vendor is defined and hardware_vendor != 'generic'
+  tags: [hardware, vendor]
