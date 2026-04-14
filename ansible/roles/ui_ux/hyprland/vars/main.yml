@@ -69,6 +69,7 @@ hyprland_core_packages:
   - hyprland                       # Wayland compositor
   - hyprland-devel                 # Plugin support via hyprpm
   - xdg-desktop-portal-hyprland   # Screensharing and portal support
+  - hyprland-guiutils
   - hyprpaper                      # Wallpaper daemon
   - hypridle                       # Idle daemon
   - hyprlock                       # Screen locker

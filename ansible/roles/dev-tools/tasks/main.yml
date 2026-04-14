@@ -45,11 +45,6 @@
 - name: Install system monitoring tools
   ansible.builtin.dnf:
     name:
-      - htop          # Interactive process viewer
-      - btop          # Resource monitor — CPU, memory, network, disk
-      - lm_sensors    # Hardware sensor readings — temps, fan speeds, voltages
-      - nvtop         # GPU process monitor — works with AMD and NVIDIA
-      - powertop      # Intel/AMD power usage analyser — identify power hogs
       - wev            # Wayland event viewer — inspect keycodes, button events, axis input
     state: present
   become: true
