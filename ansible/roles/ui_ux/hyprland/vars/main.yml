@@ -9,6 +9,8 @@
 
 hyprland_copr: "lionheartp/Hyprland"     # COPR providing Hyprland v0.54+
 
+swayosd_copr: "celestelove/SwayOSD"     # COPR providing SwayOSD
+
 # ── Paths ─────────────────────────────────────────────────────────────────────
 # rabble_home and dotfiles_repo_root are set in group_vars/all.yml and resolve
 # to the invoking user's home and repo root regardless of become: true.
@@ -40,6 +42,8 @@ hypr_config_files:
     dest: "{{ hypr_config_dir }}/conf.d/windowrules.conf"
   - src:  config/hypr/conf.d/workspaces.conf
     dest: "{{ hypr_config_dir }}/conf.d/workspaces.conf"
+  - src:  config/hypr/conf.d/functionkeys.conf
+    dest: "{{ hypr_config_dir }}/conf.d/functionkeys.conf"
 
   # hypridle.conf — must live at ~/.config/hypr/hypridle.conf 
   # hypridle aborts with SIGABRT if this file is missing at launch.
@@ -87,6 +91,9 @@ wayland_utility_packages:
   - network-manager-applet         # NetworkManager systray applet
   - kanshi                         # Display profile manager — auto-switches on connect
   - wlr-randr                      # Monitor configuration utility
+  - rofimoji        # emoji picker — uses fuzzel as selector backend
+  - v4l-utils       # v4l2-ctl for webcam toggle script
+  - swayosd         # OSD server
 
 wayland_qt_support:
   - qt6-qtwayland                  # Wayland backend for Qt6 apps

@@ -10,6 +10,13 @@
   become: true
   tags: [ui_ux, hyprland, repos]
 
+- name: Enable SwayOSD COPR
+  community.general.copr:
+    name: "{{ swayosd_copr }}"
+    state: enabled
+  become: true
+  tags: [ui_ux, hyprland, repos]
+
 # ── Packages ──────────────────────────────────────────────────────────────────
 
 - name: Install Hyprland core packages
