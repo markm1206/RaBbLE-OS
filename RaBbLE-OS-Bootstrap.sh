@@ -9,8 +9,9 @@ set -euo pipefail
 IFS=$'\n\t'
 
 # ── Colours ────────────────────────────────────────────────────────────────────
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
-CYAN='\033[0;36m'; BOLD='\033[1m';    RESET='\033[0m'
+RED='\033[0;31m';     GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+CYAN='\033[0;36m';    BOLD='\033[1m';     RESET='\033[0m'
+MAGENTA='\033[0;35m'
 
 info()    { echo -e "${CYAN}[BOOTSTRAP]${RESET} $*"; }
 success() { echo -e "${GREEN}[BOOTSTRAP]${RESET} $*"; }
@@ -23,8 +24,8 @@ section() { echo -e "\n${BOLD}${CYAN}──────────────�
 # ── Paths ──────────────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ANSIBLE_DIR="${SCRIPT_DIR}/ansible"
-PLAYBOOK="${ANSIBLE_DIR}/playbook.yml"
-INVENTORY="${ANSIBLE_DIR}/inventory/localhost"
+PLAYBOOK="${ANSIBLE_DIR}/site.yml"
+INVENTORY="${ANSIBLE_DIR}/inventory/hosts.yml"
 LOG_DIR="${SCRIPT_DIR}/logs"
 LOG_FILE="${LOG_DIR}/bootstrap-$(date +%Y%m%d-%H%M%S).log"
 RABBLE_OS_VERSION="0.0.1"

@@ -3,6 +3,16 @@
 # RaBbLE-OS-Install.sh
 # Bootstrap installer — transforms Fedora 43+ Sway spin into RaBbLE-OS
 # Version: 0.0.1
+#
+# Curl install (HTTPS clone — no SSH key required):
+#   curl -fsSL https://raw.githubusercontent.com/markm1206/RaBbLE-OS/main/RaBbLE-OS-Install.sh | bash
+#
+# Local run (SSH clone — SSH key must already be registered):
+#   bash RaBbLE-OS-Install.sh
+#
+# Override repo or destination:
+#   RABBLE_OS_REPO=git@github.com:yourfork/RaBbLE-OS.git bash RaBbLE-OS-Install.sh
+#   RABBLE_OS_DIR=~/my-rabble bash RaBbLE-OS-Install.sh
 # ==============================================================================
 set -euo pipefail
 IFS=$'\n\t'
@@ -13,7 +23,10 @@ CYAN='\033[0;36m'; BOLD='\033[1m';     RESET='\033[0m'
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 RABBLE_OS_VERSION="0.0.1"
-RABBLE_OS_REPO="${RABBLE_OS_REPO:-git@github.com:YOUR_ORG/RaBbLE-OS.git}"
+# HTTPS is the default — works immediately from curl without SSH key pre-registered.
+# After install, the SSH key setup converts your working copy remote to SSH if desired.
+# Override with: RABBLE_OS_REPO=git@github.com:markm1206/RaBbLE-OS.git bash install.sh
+RABBLE_OS_REPO="${RABBLE_OS_REPO:-https://github.com/markm1206/RaBbLE-OS.git}"
 RABBLE_OS_DIR="${RABBLE_OS_DIR:-$HOME/RaBbLE-OS}"
 MIN_FEDORA_VERSION=43
 SSH_CONFIG="$HOME/.ssh/config"
@@ -38,7 +51,7 @@ cat << 'EOF'
   ██║  ██║ ╚█████ ██████╔╝██████╔╝███████╗███████╗   ╚██████╔╝███████║
   ╚═╝  ╚═╝    ╚═█ ╚═════╝ ╚═════╝ ╚══════╝╚══════╝    ╚═════╝ ╚══════╝
 
-  The Reasonable and Barely Bearable Linux Experience
+  The Reasonable and Barely Bearable Linux Experience -- LMAO
   Bootstrap Installer v0.0.1
   ── Sway ──→ RaBbLE-OS ──
 EOF
@@ -299,9 +312,23 @@ clone_repo() {
     info "Destination : ${RABBLE_OS_DIR}"
 
     git clone "$RABBLE_OS_REPO" "$RABBLE_OS_DIR" || \
-        error "Clone failed. Ensure:\n  1. SSH key is registered with your git remote\n  2. RABBLE_OS_REPO is set correctly (current: ${RABBLE_OS_REPO})\n  3. SSH port 443 config is active"
+        error "Clone failed.\n  Repo : ${RABBLE_OS_REPO}\n  Check your internet connection and that the URL is correct.\n  For SSH clones, ensure your key is registered: ssh -T git@github.com"
 
     success "Repository cloned to: ${RABBLE_OS_DIR}"
+
+    # If we cloned via HTTPS and now have an SSH key, offer to switch remote to SSH.
+    # This is cosmetic for ongoing git use — not required for the install to proceed.
+    if [[ "$RABBLE_OS_REPO" == https://* && -f "${GIT_SSH_KEY}.pub" ]]; then
+        local ssh_remote
+        # Derive SSH remote from HTTPS URL: https://github.com/user/repo.git → git@github.com:user/repo.git
+        ssh_remote=$(echo "$RABBLE_OS_REPO" | sed 's|https://github.com/|git@github.com:|')
+        echo ""
+        read -rp "  SSH key is ready — switch repo remote to SSH for future pushes? [Y/n]: " switch_remote
+        if [[ "${switch_remote,,}" != "n" ]]; then
+            git -C "$RABBLE_OS_DIR" remote set-url origin "$ssh_remote"
+            success "Remote updated to SSH: ${ssh_remote}"
+        fi
+    fi
 }
 
 # ── Hand off to Bootstrap ──────────────────────────────────────────────────────
@@ -334,12 +361,37 @@ main() {
 
     check_not_root
     check_fedora_version
+
+    # Core tools — must precede clone
     setup_git
-    setup_ssh_key
-    configure_ssh_port
     setup_pip3
     setup_ansible
+
+    # Clone the repo (HTTPS — works immediately, no SSH key required)
     clone_repo
+
+    # SSH setup — optional but recommended for ongoing development.
+    # Runs after clone so the repo exists regardless of SSH outcome.
+    echo ""
+    info "SSH key setup — recommended for pushing changes back to the repo."
+    read -rp "  Set up SSH key now? [Y/n]: " do_ssh
+    if [[ "${do_ssh,,}" != "n" ]]; then
+        setup_ssh_key
+        configure_ssh_port
+        # Offer to flip the cloned remote to SSH now that the key is ready
+        if [[ "$RABBLE_OS_REPO" == https://* && -f "${GIT_SSH_KEY}.pub" ]]; then
+            local ssh_remote
+            ssh_remote=$(echo "$RABBLE_OS_REPO" | sed 's|https://github.com/|git@github.com:|')
+            read -rp "  Switch cloned remote to SSH? [Y/n]: " switch_remote
+            if [[ "${switch_remote,,}" != "n" ]]; then
+                git -C "$RABBLE_OS_DIR" remote set-url origin "$ssh_remote"
+                success "Remote updated → ${ssh_remote}"
+            fi
+        fi
+    else
+        warn "Skipping SSH setup. You can run it later with: bash ${RABBLE_OS_DIR}/RaBbLE-OS-Install.sh"
+    fi
+
     begin_bootstrap
 }
 
