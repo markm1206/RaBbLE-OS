@@ -46,17 +46,25 @@ divider() { echo -e "${MUTED}─────────────────
 
 declare -A BUNDLE_SRC=(
   [hypr]="config/hypr"
+  [waybar]="config/waybar"
 )
 
 declare -A BUNDLE_DEST=(
   [hypr]="${HOME}/.config/hypr"
+  [waybar]="${HOME}/.config/waybar"
 )
 
 declare -A BUNDLE_DESC=(
   [hypr]="Hyprland compositor config"
+  [waybar]="Waybar status bar config + scripts"
 )
 
-BUNDLE_ORDER=(hypr)
+BUNDLE_ORDER=(hypr waybar)
+
+declare -A BUNDLE_RELOAD=(
+  [hypr]="hyprctl reload"
+  [waybar]="pkill -x waybar || true; setsid --fork waybar &>/dev/null"
+)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -213,6 +221,24 @@ cmd_diff() {
   done
 }
 
+# ── reload ───────────────────────────────────────────────────────────────────
+
+cmd_reload() {
+  local -a bundles
+  read -ra bundles <<< "$(resolve_bundles "${1:-all}")"
+
+  for bundle in "${bundles[@]}"; do
+    local reload_cmd="${BUNDLE_RELOAD[$bundle]:-}"
+    if [[ -z "$reload_cmd" ]]; then
+      muted "no reload defined for '${bundle}' — skipping"
+      continue
+    fi
+    pulse "Reloading: ${BUNDLE_DESC[$bundle]}"
+    eval "$reload_cmd"
+    ok "Bundle '${bundle}' reloaded. // %RELOADED%"
+  done
+}
+
 # ── list ──────────────────────────────────────────────────────────────────────
 
 cmd_list() {
@@ -249,6 +275,9 @@ cmd_help() {
   echo -e "  ${CYAN}diff${RESET}   [bundle|all]"
   echo -e "          Line diff between repo and deployed. (+) = live has it, (−) = repo has it."
   echo
+  echo -e "  ${CYAN}reload${RESET} [bundle|all]"
+  echo -e "          Reload a running bundle. Detached — no shell ownership."
+  echo
   echo -e "  ${CYAN}list${RESET}"
   echo -e "          List all known bundles and file counts."
   echo
@@ -262,6 +291,7 @@ cmd_help() {
   echo -e "  ${MUTED}./RaBbLE-OS-dotctl.sh status${RESET}"
   echo -e "  ${MUTED}./RaBbLE-OS-dotctl.sh diff hypr${RESET}"
   echo -e "  ${MUTED}./RaBbLE-OS-dotctl.sh pull hypr${RESET}"
+  echo -e "  ${MUTED}./RaBbLE-OS-dotctl.sh reload waybar${RESET}"
   echo
 }
 
@@ -275,6 +305,7 @@ case "$COMMAND" in
   pull)    cmd_pull   "${1:-}" ;;
   status)  cmd_status "${1:-}" ;;
   diff)    cmd_diff   "${1:-}" ;;
+  reload)  cmd_reload "${1:-}" ;;
   list)    cmd_list ;;
   help|-h|--help) cmd_help ;;
   *)
