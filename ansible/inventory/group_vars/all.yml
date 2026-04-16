@@ -1,0 +1,30 @@
+---
+# ansible/inventory/group_vars/all.yml
+# =============================================================================
+# RaBbLE — Global defaults (all targets)
+# Override per hardware target in group_vars/<target>.yml
+# =============================================================================
+
+# ── Identity ──────────────────────────────────────────────────────────────────
+# ansible_user is set in hosts.yml via lookup('env', 'USER') at inventory
+# parse time — before become: true elevates to root — so these resolve
+# correctly to the invoking user regardless of privilege escalation.
+rabble_user: "{{ ansible_user }}"
+rabble_home: "/home/{{ ansible_user }}"
+
+# ── Paths ─────────────────────────────────────────────────────────────────────
+rabble_config_home:  "{{ rabble_home }}/.config"
+dotfiles_repo_root:  "{{ rabble_repo_root }}"
+
+# ── Theme palette — synthwave ─────────────────────────────────────────────────
+rabble_color_bg:      "#0a0010"   # Deep void
+rabble_color_primary: "#ff2d78"   # Hot magenta — borders, highlights, prompt
+rabble_color_accent:  "#00f5ff"   # Electric cyan — git, status, secondary accents
+rabble_color_violet:  "#bf5fff"   # Soft violet — decorative, tertiary accents
+rabble_color_pink:    "#f7a8d4"   # Soft pink — untracked files, magenta-adjacent
+rabble_color_text:    "#e8d5ff"   # Off-white with purple tint — primary text
+rabble_color_muted:   "#8860aa"   # Muted purple — secondary/dim text
+rabble_color_surface: "#120025"   # Elevated surface — input fields, cards
+
+# ── Desktop ───────────────────────────────────────────────────────────────────
+rabble_default_shell: zsh    # zsh | bash

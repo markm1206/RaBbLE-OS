@@ -1,0 +1,25 @@
+# Scratchpad
+BaBbLE/
+
+# AI tooling — local only
+CLAUDE.md
+
+# Logs
+logs/
+
+# Ansible
+*.retry
+ansible/.vault_pass
+ansible/vault_pass
+*.vault
+
+# Python (galaxy deps, generate scripts)
+__pycache__/
+*.py[cod]
+.venv/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
