@@ -75,10 +75,9 @@ harmonize ~ grimoire >> surfacing the static // %DRIFT_TRACKING%
 - Root cause: KDE packages not yet purged; `QT_STYLE_OVERRIDE` not set
 - Fix: purge KDE packages (blocked by `purge-kde/` role being unwritten), set explicit Qt theme env vars
 
-**Hyprland wallpaper not managed by Ansible**
-- `hyprpaper.conf` requires a wallpaper path that is machine-local
-- The Ansible role does not create a default wallpaper or `hyprpaper.conf`
-- Workaround: manually create `~/.config/hypr/hyprpaper.conf` with a valid wallpaper path
+**~~Hyprland wallpaper not managed by Ansible~~** — RESOLVED
+- `hyprpaper.conf` and `assets/wallpaper.png` now tracked in grimoire
+- Wallpaper deployed to `~/.config/hypr/wallpapers/wallpaper.png` by the hyprland config task
 
 **hypridle — crashes or instability reported**
 - hypridle has been unstable in some configurations
