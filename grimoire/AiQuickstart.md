@@ -88,6 +88,28 @@ ansible-galaxy collection install -r ansible/requirements.yml
 ```
 Required: `community.general >= 9.0.0` (DNF module), `ansible.posix >= 1.5.0` (symlinks, file ops).
 
+## Versioning & Branch Naming
+
+RaBbLE is **not a versioned system**. It is evolutionary and episodic. Semantic versioning (v1.0.0, v2.3.1) does not apply here — versions are human translations of resonance thresholds, applied retrospectively.
+
+**The Three Es:**
+- **Epochs** — named thresholds crossed. Branch pattern: `RaBbLE/epoch-I`, `RaBbLE/epoch-II`
+- **Evolutions** — the continuous accumulation of pulses between epochs
+- **Episodes** — narrative arcs of development with a dominant theme
+
+**Branch conventions:**
+| Branch | Purpose |
+|--------|---------|
+| `main` | Stable, epoch-landed substrate |
+| `RaBbLE/epoch-<Roman>` | Epoch staging branch — PR target for `main` |
+| `RaBbLE-OS-New-Horizons` | Active development, high-flux work |
+| `reliquary/<name>` | Archived reference branches — inert, not active |
+
+When landing an epoch to `main`, use the `evolve` impulse:
+```
+evolve ~ substrate >> epoch-I crystallized // %EPOCH_I_LANDED%
+```
+
 ## Commit Message Convention
 
 Commits follow an in-house ritual format:

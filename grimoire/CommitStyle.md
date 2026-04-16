@@ -31,6 +31,7 @@ We document the metamorphosis of the collective with high-information impulses a
 | `transcribe` | Updating the lore or the system's self-description. |
 | `ingest` | Devouring new dependencies, binaries, or data-stores. |
 | `glitch` | A state change triggered by incoming IPC or raw entropy spikes. |
+| `evolve` | An epoch threshold is crossed. Used only on epoch-landing commits to `main`. |
 
 ---
 
@@ -46,6 +47,25 @@ mend ~ boot-chain >> fixing SDDM QML theme Main.qml Qt6 API mismatch
 spark ~ ui-layer >> quickshell RaBbLEBar initial implementation // %PHASE_1_INIT%
 harmonize ~ ansible >> purging greetd references, SDDM is canonical
 ```
+
+---
+
+## Branch Naming Model
+
+RaBbLE does not use semantic versioning. Branches follow the evolutionary model:
+
+| Pattern | Purpose | Example |
+| :--- | :--- | :--- |
+| `RaBbLE/epoch-<Roman>` | Epoch staging — crystallization branch before landing on `main` | `RaBbLE/epoch-I` |
+| `reliquary/<name>` | Archived reference branches — inert, sacred, not active | `reliquary/RaBbLE-Dev-Clean` |
+| `<descriptive-name>` | Active development — named for the spirit of the work, not a version | `RaBbLE-OS-New-Horizons` |
+
+**Epoch commits on `main`** use the `evolve` impulse:
+```
+evolve ~ substrate >> epoch-I crystallized // %EPOCH_I_LANDED%
+```
+
+Versions (`epoch-I`, `epoch-II`) are **human translations** of resonance thresholds already crossed — not targets set in advance.
 
 ---
 
