@@ -1,0 +1,6 @@
+---
+# desktop/hyprland/tasks/config.yml — STUB
+- name: hyprland config — stub
+  ansible.builtin.debug:
+    msg: "spark ~ desktop/hyprland >> config stub, no-op // %DORMANT%"
+  tags: [desktop, hyprland, config]
