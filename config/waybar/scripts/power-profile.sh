@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # power-profile.sh — cycle power-profiles-daemon profiles; output Waybar JSON.
 # Requires: power-profiles-daemon (dnf install power-profiles-daemon)
+# FIX: removed %PROFILE_SHIFT% placeholder from notify-send.
+# FIX: cycle now sends SIGRTMIN+8 to waybar to force immediate refresh.
 #
 # Usage:
 #   power-profile.sh get    — print current profile as Waybar JSON
@@ -8,7 +10,6 @@
 
 PROFILES=("power-saver" "balanced" "performance")
 ICONS=("󰌪" "󰗑" "󱐋")
-COLORS=("#50fa7b" "#00f5ff" "#ff2d78")   # green / cyan / magenta — RaBbLE palette
 TIPS=("Power Saver — max battery life" "Balanced — auto tuning" "Performance — max clocks")
 
 get_current_index() {
@@ -17,7 +18,7 @@ get_current_index() {
     for i in "${!PROFILES[@]}"; do
         [[ "${PROFILES[$i]}" == "$current" ]] && echo "$i" && return
     done
-    echo 1
+    echo 1  # default to balanced if unknown
 }
 
 case "$1" in
@@ -30,8 +31,10 @@ case "$1" in
         idx=$(get_current_index)
         next=$(( (idx + 1) % ${#PROFILES[@]} ))
         powerprofilesctl set "${PROFILES[$next]}"
-        notify-send "Power Profile // %PROFILE_SHIFT%" "${TIPS[$next]}" \
+        notify-send "Power Profile" "${TIPS[$next]}" \
             --icon=battery-symbolic -t 2000
+        # Signal Waybar to refresh this custom module immediately
+        pkill -SIGRTMIN+8 waybar
         ;;
     *)
         echo "Usage: $0 {get|cycle}" >&2
