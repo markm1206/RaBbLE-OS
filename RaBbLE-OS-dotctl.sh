@@ -46,6 +46,7 @@ divider() { echo -e "${MUTED}─────────────────
 
 declare -A BUNDLE_SRC=(
   [hypr]="config/hypr"
+  [wallpapers]="config/wallpapers"
   [waybar]="config/waybar"
   [quickshell]="config/quickshell"
   [zsh]="config/shell/zsh"
@@ -55,6 +56,7 @@ declare -A BUNDLE_SRC=(
 
 declare -A BUNDLE_DEST=(
   [hypr]="${HOME}/.config/hypr"
+  [wallpapers]="${HOME}/.config/wallpapers"
   [waybar]="${HOME}/.config/waybar"
   [quickshell]="${HOME}/.config/quickshell"
   [zsh]="${HOME}/.config/zsh"
@@ -64,6 +66,7 @@ declare -A BUNDLE_DEST=(
 
 declare -A BUNDLE_DESC=(
   [hypr]="Hyprland compositor config"
+  [wallpapers]="Wallpaper assets"
   [waybar]="Waybar status bar config + scripts"
   [quickshell]="Quickshell QML bar & launcher"
   [zsh]="Zsh config (Zinit + Powerlevel10k)"
@@ -71,10 +74,11 @@ declare -A BUNDLE_DESC=(
   [mako]="Mako notification daemon config"
 )
 
-BUNDLE_ORDER=(hypr waybar quickshell zsh bash mako)
+BUNDLE_ORDER=(hypr wallpapers waybar quickshell zsh bash mako)
 
 declare -A BUNDLE_RELOAD=(
   [hypr]="hyprctl reload"
+  [wallpapers]="hyprctl hyprpaper reload"
   [waybar]="pkill -x waybar || true; setsid --fork waybar &>/dev/null"
   [quickshell]="pkill -x quickshell || true; setsid --fork quickshell &>/dev/null"
   [zsh]="source ${HOME}/.config/zsh/.zshrc 2>/dev/null || true"
