@@ -1,0 +1,5 @@
+---
+- name: rebuild initramfs
+  become: true
+  ansible.builtin.command: dracut --force
+  listen: rebuild initramfs

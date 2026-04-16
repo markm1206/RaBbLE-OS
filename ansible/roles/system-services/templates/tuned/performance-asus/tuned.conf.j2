@@ -1,0 +1,29 @@
+# =============================================================================
+# tuned profile: performance-asus
+# High-performance profile for plugged-in / Turbo use.
+# Lifts CPU caps, disables aggressive power saving on storage/USB.
+# Managed by Ansible — do not edit directly.
+# =============================================================================
+
+[main]
+summary=Performance profile for ASUS laptops — plugged-in / Turbo mode
+include=throughput-performance
+
+[cpu]
+governor=performance
+energy_perf_bias=performance
+min_perf_pct=50
+max_perf_pct=100
+
+[disk]
+apm=254
+readahead=8192
+
+[usb]
+autosuspend=0
+
+[audio]
+timeout=0
+
+[vm]
+transparent_hugepages=always

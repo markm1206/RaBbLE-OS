@@ -1,0 +1,27 @@
+---
+- name: reload tuned
+  become: true
+  ansible.builtin.command: tuned-adm profile {{ tuned_active_profile }}
+  listen: reload tuned
+
+- name: reload systemd
+  become: true
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: reload systemd
+
+- name: restart supergfxd
+  become: true
+  ansible.builtin.systemd:
+    name: supergfxd
+    state: restarted
+  listen: restart supergfxd
+  failed_when: false
+
+- name: restart asusd
+  become: true
+  ansible.builtin.systemd:
+    name: asusd
+    state: restarted
+  listen: restart asusd
+  failed_when: false

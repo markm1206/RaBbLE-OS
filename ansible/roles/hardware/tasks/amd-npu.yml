@@ -1,0 +1,69 @@
+---
+# =============================================================================
+# AMD NPU — XDNA2 Kernel Driver + Firmware
+# Hardware layer: kernel module, firmware, modprobe config only.
+# Userspace XRT runtime lives in roles/runtime/tasks/xrt.yml
+# =============================================================================
+
+- name: Skip NPU configuration if disabled
+  ansible.builtin.meta: end_play
+  when: not npu_enabled | bool
+
+- name: Ensure linux-firmware is up to date (contains amdxdna firmware)
+  become: true
+  ansible.builtin.dnf:
+    name: linux-firmware
+    state: latest
+  tags: [hardware, npu, firmware]
+
+- name: Install kernel development headers (for amdxdna if DKMS needed)
+  become: true
+  ansible.builtin.dnf:
+    name:
+      - kernel-devel
+      - kernel-headers
+    state: present
+  tags: [hardware, npu]
+
+- name: Deploy amdxdna modprobe configuration
+  become: true
+  ansible.builtin.copy:
+    src: modprobe.d/amdxdna.conf
+    dest: /etc/modprobe.d/amdxdna.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  tags: [hardware, npu]
+  notify: rebuild initramfs
+
+- name: Load amdxdna kernel module
+  become: true
+  community.general.modprobe:
+    name: amdxdna
+    state: present
+  register: amdxdna_load
+  failed_when: false          # Non-fatal — kernel may not have module yet
+  tags: [hardware, npu]
+
+- name: Warn if amdxdna module not available
+  ansible.builtin.debug:
+    msg: >
+      WARNING: amdxdna module could not be loaded.
+      Ensure kernel >= 6.11 is running: uname -r
+      Current kernel: {{ ansible_kernel }}
+  when: amdxdna_load.rc is defined and amdxdna_load.rc != 0
+  tags: [hardware, npu]
+
+- name: Persist amdxdna module across reboots
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/amdxdna.conf
+    content: |
+      # AMD NPU (XDNA2) — loaded at boot
+      amdxdna
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  tags: [hardware, npu]

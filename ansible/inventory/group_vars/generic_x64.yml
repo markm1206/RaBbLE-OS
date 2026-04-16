@@ -1,0 +1,7 @@
+# ansible/inventory/group_vars/generic_x64.yml
+
+hardware_vendor: "generic"
+form_factor: "desktop"
+npu_enabled: false
+power_stack_profile: "tuned_only"
+tuned_active_profile: "balanced"

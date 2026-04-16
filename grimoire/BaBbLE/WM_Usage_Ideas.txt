@@ -1,0 +1,34 @@
+
+Living desktop background
+
+
+Workspaces are task spaces: 
+    Coding
+    Job Search
+    etc ...
+
+    Within a workspace apps can exist in layered stacks of tiles 
+    stack 1 : firefox
+    stack 2 : Terminal + VScode
+    stack 3 : test app + etc ...
+
+    Stacks should act like how standard hyprland workspaces do,
+    but have some of the visual of layer of workspaces preserved
+
+Workspaces are more broad than stacks. Workspaces can be tailored or tuned to specific task types
+    Coding
+    Entertainment
+    Gaming
+    Productivity
+
+Switching workspaces is a larger more full context switch. 
+
+Workspaces might have default app and data readouts to make getting situated faster
+Coding workspace would suggest different apps and option than Productivity would
+
+
+
+Apps also should be more draggable, I need top bars and more easy floating with intelligent snapping. 
+
+all vertices should be dragable to rezise the tile mosaic
+

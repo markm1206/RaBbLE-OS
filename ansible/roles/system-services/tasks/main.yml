@@ -1,0 +1,28 @@
+---
+# =============================================================================
+# System Services Role — Power Authority Arbitration + Service Management
+# =============================================================================
+# Run order matters:
+#   1. arbitration  — establishes which daemons own which concerns
+#   2. tuned        — always configured regardless of profile
+#   3. asusd        — conditionally enabled based on power_stack_profile
+#   4. supergfxd    — conditionally enabled based on power_stack_profile
+# =============================================================================
+
+- name: Enforce power authority arbitration
+  ansible.builtin.import_tasks: power/arbitration.yml
+  tags: [system-services, arbitration]
+
+- name: Configure tuned
+  ansible.builtin.import_tasks: power/tuned.yml
+  tags: [system-services, tuned]
+
+- name: Configure asusd (asusctl)
+  ansible.builtin.import_tasks: power/asusd.yml
+  when: hardware_vendor == 'asus'
+  tags: [system-services, asus, asusd]
+
+- name: Configure supergfxd
+  ansible.builtin.import_tasks: power/supergfxd.yml
+  when: hardware_vendor == 'asus'
+  tags: [system-services, asus, gpu, supergfxd]

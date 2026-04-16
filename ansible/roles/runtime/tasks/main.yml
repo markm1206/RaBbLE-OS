@@ -1,0 +1,16 @@
+---
+# =============================================================================
+# Runtime Role — AI/ML Userspace Runtimes
+# =============================================================================
+# Sits above hardware (kernel modules) and below applications.
+# Provides the compute substrate that agentic workloads target.
+#
+# Stack:
+#   hardware/amd-npu.yml  → amdxdna kernel module + firmware
+#   runtime/xrt.yml       → XRT userspace + XDNA2 runtime libraries  ← HERE
+# =============================================================================
+
+- name: Configure XRT + XDNA2 userspace runtime
+  ansible.builtin.import_tasks: xrt.yml
+  when: npu_enabled | bool
+  tags: [runtime, xrt, npu]

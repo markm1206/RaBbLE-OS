@@ -1,0 +1,17 @@
+---
+# =============================================================================
+# Observability Role — Sensors, Metrics, Telemetry Producers
+# =============================================================================
+# Passive data producers. Nothing here actively manages hardware state.
+# Feeds structured system data for:
+#   - Human dashboards (btop, psensor)
+#   - Agent telemetry subscriptions (future node_exporter / custom bus)
+# =============================================================================
+
+- name: Configure hardware sensors
+  ansible.builtin.import_tasks: sensors.yml
+  tags: [observability, sensors]
+
+- name: Configure power monitoring
+  ansible.builtin.import_tasks: powertop.yml
+  tags: [observability, powertop, power]

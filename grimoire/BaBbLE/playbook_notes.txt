@@ -1,0 +1,58 @@
+# Test asusctl fan control alongside tuned
+ansible-playbook site.yml -e "power_stack_profile=tuned_asus"
+
+# Something broke — snap back to known good
+ansible-playbook site.yml -e "power_stack_profile=tuned_only" --tags "arbitration,rollback"
+
+# Full asus stack experiment
+ansible-playbook site.yml -e "power_stack_profile=full_asus" -e "gpu_mode=hybrid"
+
+
+ansible-playbook ansible/site.yml --syntax-check
+
+# Does Ansible see your hosts correctly?
+ansible-playbook ansible/site.yml --list-hosts
+
+# What groups does localhost belong to?
+ansible localhost -i ansible/inventory --list-hosts -m debug
+
+# What vars does localhost actually resolve to?
+# This is the most important check — confirms group_vars inheritance is correct
+ansible -i ansible/inventory localhost -m debug -a "var=hostvars[inventory_hostname]"
+
+# Spot-check specific vars
+ansible -i ansible/inventory localhost -m debug -a "var=power_stack_profile"
+ansible -i ansible/inventory localhost -m debug -a "var=hardware_vendor"
+ansible -i ansible/inventory localhost -m debug -a "var=npu_enabled"
+
+
+# What tasks would run on a full play?
+ansible-playbook ansible/site.yml -K --list-tasks
+
+# What tasks are tagged 'hardware'?
+ansible-playbook ansible/site.yml -K --list-tasks --tags hardware
+
+# What tasks would run if you changed the power profile?
+ansible-playbook ansible/site.yml -K --list-tasks \
+  -e "power_stack_profile=tuned_asus"
+
+# Verify rollback tasks are wired correctly
+ansible-playbook ansible/site.yml -K --list-tasks --tags rollback
+
+
+# Full dry run
+ansible-playbook ansible/site.yml -K --check
+
+# Dry run with diff — shows exactly what file contents would change
+ansible-playbook ansible/site.yml -K --check --diff
+
+# Dry run a specific role only
+ansible-playbook ansible/site.yml -K --check --diff --tags hardware
+
+# Dry run a power stack experiment
+ansible-playbook ansible/site.yml -K --check --diff \
+  -e "power_stack_profile=tuned_asus"
+
+
+#FIRST REAL RUN 
+

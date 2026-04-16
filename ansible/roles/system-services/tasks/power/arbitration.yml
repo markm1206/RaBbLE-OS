@@ -1,0 +1,76 @@
+---
+# =============================================================================
+# Power Authority Arbitration
+# Enforces exactly one power management authority per concern.
+# This task file MUST run before any power service configuration.
+#
+# Authority matrix:
+#   CPU governor    → tuned (all profiles) | asusd (full_asus via delegation)
+#   Fan curves      → asusd (tuned_asus, full_asus) | none (tuned_only)
+#   GPU mux switch  → supergfxd (full_asus only)
+#   Platform TDP    → asusd (tuned_asus, full_asus)
+#   power-profiles-d→ ALWAYS MASKED — conflicts with both tuned and asusd
+# =============================================================================
+
+- name: Mask power-profiles-daemon (conflicts with tuned and asusd)
+  become: true
+  ansible.builtin.systemd:
+    name: power-profiles-daemon
+    enabled: false
+    state: stopped
+    masked: true
+  failed_when: false          # May not be installed — that's fine
+  tags: [system-services, arbitration, always]
+
+# ── tuned_only ────────────────────────────────────────────────────────────────
+# Safe rollback target. tuned owns everything. ASUS services stopped.
+
+- name: "[tuned_only] Stop and disable ASUS services"
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: false
+    state: stopped
+  loop:
+    - asusd
+    - supergfxd
+  failed_when: false          # Services may not be installed yet
+  when: power_stack_profile == 'tuned_only' or power_stack_rollback | bool
+  tags: [system-services, arbitration, rollback]
+
+# ── tuned_asus ────────────────────────────────────────────────────────────────
+# tuned handles CPU governor. asusd handles fans + platform TDP.
+# supergfxd is NOT active — GPU stays in whatever state tuned/kernel left it.
+
+- name: "[tuned_asus] Enable asusd, disable supergfxd"
+  become: true
+  ansible.builtin.systemd:
+    name: supergfxd
+    enabled: false
+    state: stopped
+  failed_when: false
+  when: power_stack_profile == 'tuned_asus'
+  tags: [system-services, arbitration]
+
+# ── full_asus ─────────────────────────────────────────────────────────────────
+# asusd owns fans + platform TDP. supergfxd owns GPU mux.
+# tuned remains active for CPU governor — asusd delegates rather than replaces.
+
+- name: "[full_asus] Verify supergfxctl is installed before enabling"
+  ansible.builtin.command: which supergfxctl
+  register: supergfxctl_check
+  changed_when: false
+  failed_when: false
+  when: power_stack_profile == 'full_asus'
+  tags: [system-services, arbitration]
+
+- name: "[full_asus] Warn if supergfxctl not installed"
+  ansible.builtin.debug:
+    msg: >
+      WARNING: power_stack_profile=full_asus requires supergfxctl.
+      Run with --tags supergfxd to install it first, then re-run.
+  when:
+    - power_stack_profile == 'full_asus'
+    - supergfxctl_check.rc is defined
+    - supergfxctl_check.rc != 0
+  tags: [system-services, arbitration]

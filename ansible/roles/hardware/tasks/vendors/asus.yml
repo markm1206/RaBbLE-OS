@@ -1,0 +1,52 @@
+---
+# =============================================================================
+# ASUS Vendor Hardware Tasks
+# Platform driver, WMI interface, and ACPI quirks only.
+# Service arbitration lives in system-services/tasks/arbitration.yml
+# =============================================================================
+
+- name: Install ASUS platform dependencies
+  become: true
+  ansible.builtin.dnf:
+    name:
+      - acpi
+      - acpid
+    state: present
+  tags: [hardware, vendor, asus]
+
+- name: Ensure asus-nb-wmi module is loaded
+  become: true
+  community.general.modprobe:
+    name: asus-nb-wmi
+    state: present
+  register: asus_wmi_load
+  failed_when: false
+  tags: [hardware, vendor, asus]
+
+- name: Persist asus-nb-wmi module
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/asus-nb-wmi.conf
+    content: |
+      # ASUS Notebook WMI interface
+      asus-nb-wmi
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  tags: [hardware, vendor, asus]
+
+- name: Deploy ASUS ACPI platform quirks
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/asus-platform.conf
+    content: |
+      # ASUS platform quirks
+      # fnlock_default: 0=media keys default, 1=function keys default
+      options asus-nb-wmi fnlock_default=1
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  tags: [hardware, vendor, asus]
+  notify: rebuild initramfs

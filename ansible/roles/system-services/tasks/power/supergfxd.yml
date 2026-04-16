@@ -1,0 +1,78 @@
+---
+# =============================================================================
+# supergfxd — GPU Mux Switching
+# Only active when power_stack_profile == full_asus
+# gpu_mode controls the active switching state.
+#
+# gpu_mode values:
+#   integrated  → dGPU fully suspended. Best battery. Current safe state.
+#   hybrid      → iGPU renders, dGPU available for PRIME offload / compute
+#   dedicated   → dGPU drives display. Max perf. Plugged-in only.
+#
+# NOTE: GPU mode changes require logout. Handler triggers notification only.
+# =============================================================================
+
+- name: Install supergfxctl
+  become: true
+  ansible.builtin.dnf:
+    name: supergfxctl
+    state: present
+  tags: [system-services, gpu, supergfxd]
+
+- name: Enable supergfxd service
+  become: true
+  ansible.builtin.systemd:
+    name: supergfxd
+    enabled: "{{ power_stack_profile == 'full_asus' }}"
+    state: "{{ 'started' if power_stack_profile == 'full_asus' else 'stopped' }}"
+    daemon_reload: true
+  tags: [system-services, gpu, supergfxd]
+
+- name: Deploy supergfxd configuration
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/supergfxd.conf
+    content: |
+      {
+        "mode": "{{ supergfx_mode_map[gpu_mode] | default('Integrated') }}",
+        "vfio_enable": false,
+        "vfio_save": false,
+        "always_reboot": false,
+        "no_logind": false,
+        "logout_timeout_s": 180
+      }
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  vars:
+    supergfx_mode_map:
+      integrated: "Integrated"
+      hybrid: "Hybrid"
+      dedicated: "Dedicated"
+  when: power_stack_profile == 'full_asus'
+  tags: [system-services, gpu, supergfxd]
+  notify: restart supergfxd
+
+- name: Verify current GPU mode
+  ansible.builtin.command: supergfxctl -g
+  register: gpu_mode_check
+  changed_when: false
+  failed_when: false
+  when: power_stack_profile == 'full_asus'
+  tags: [system-services, gpu, supergfxd, verify]
+
+- name: Report GPU mode
+  ansible.builtin.debug:
+    msg: "Current GPU mode: {{ gpu_mode_check.stdout | default('supergfxd not active') }}"
+  tags: [system-services, gpu, supergfxd, verify]
+
+# ── Rollback ──────────────────────────────────────────────────────────────────
+
+- name: Rollback — restore GPU to integrated mode
+  ansible.builtin.command: supergfxctl -m Integrated
+  when:
+    - power_stack_rollback | bool
+    - power_stack_profile == 'full_asus'
+  failed_when: false
+  tags: [system-services, gpu, supergfxd, rollback]

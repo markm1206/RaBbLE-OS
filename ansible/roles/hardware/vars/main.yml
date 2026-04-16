@@ -1,0 +1,4 @@
+---
+# Hardware role internal vars — override in group_vars/all.yml or host_vars
+hardware_vendor: "{{ hardware_vendor | default('generic') }}"
+# npu_enabled: "{{ npu_enabled | default(true) }}"

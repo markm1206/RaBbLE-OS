@@ -1,0 +1,135 @@
+BaBbLE -- a Running Scratchpad of Ideas (unorganized)
+
+Qtutils complaint when hyprland starts
+
+hypridle has issues and tends to crash
+
+fuzzel(menu) also tends to crash
+
+rectify the ansible between RaBbLE-dev and BaBbLE-dev
+
+powerstat should be installed into RaBbLE-OS
+
+Quickshell install has errors
+
+SDDM theme main.qml also has errors.
+
+The bootstrap.sh needs to run the grub theme script. 
+
+The Ansible has numerous errors. I am starting to feel that I need to do alot of things myself
+
+Th deploy dotfiles did not work -- claimed success but did nothing. 
+
+Admire wifi PW : 9379749613
+
+Hyprland.conf can break login. The GPU managment should be handled by separate script to not break hyprland login. 
+
+Hyprland Wallpaper should be created by the Ansible playbook. 
+
+Mouse settings (scroll type, sensitivity should be handled outside the WM/DE) - Pure Libinput
+
+Need a unified settings panel. 
+
+KDE theming is still present in Hyprland
+
+Need to theme Waybar or movve to Quickshell implementation.
+
+Need to fix the XRT paths in zsh
+
+Need to make zsh more my own/RaBbLE like
+
+Do I need SDDM? What is the best login system for theming
+
+Tempted to make the boot sequence more terminal like to be faster. Unsure - to test
+
+Current Hyprland COPR in use might be outdated/abandonded make sure that I a recent COPR used in Ansible. 
+
+Implement hooks for minimize, maximize and close button hooks within hyprland.
+RaBbLE-OS should be both tiling WM and floating WM compaible. windows should be draggable, but always snap tile or be fullscreen.
+
+
+I am trying to get my system running a themed OS experience called RaBbLE. 
+This will be a customized Hyprland+quickshell UI/UX that feels polished for daily use. 
+I am using Grub2 -> Plymouth -> Session Manager (greetd?, SDDM?, etc...) as the bootflow
+The system is Wayland only, X11 will use purely xwayland.
+
+The theme should be synthwave esque.
+
+The custom grub and plymouth themes should have the needed files included in the repo and deployed by bootstrap/ansible onto the stystem.
+
+The theme should support HiDPI displays, and the TTY should also be setup to support hiDPI display. Dev machine has 3840x2400 on 16" panel
+
+Plan/Roadmap
+1.  Install Fedora 43 (I used the KDE spin) -- DONE
+
+2.  Clone RaBbLE git hub -- Repo exists, main has README and License
+
+3.  Run Bootstrap scripts -- Want a scripts that helps with setup and recovery, should be interactive. serves as ansible entry point.
+
+    Bootstrap: 
+        * setup ansible
+        * upgrade base system packages and make sure pacakge manager works
+
+        * easy to extend - new options, etc ...
+        * wrap roles/layers into managed scripts to deploy more complex things.
+        * make the system use ansible rather than have the user learn ansible, they just use the scripts.
+
+
+Make all ansible roles layered. 
+
+Layers
+    - core, base system, and CLI
+    Hardware layer (target based)
+        -x64
+            - asus proArt p16 (Hardware specific tuning)
+                - hybrid GFX support layer
+                    - drivers
+                    - config 
+                - NPU support layer
+                - asusctl config and power profiles
+            - Nvidia RTX Desktop (generic, hypothetical target)
+        -aarch64
+            - SBC_0 (some SBC/MPU SOC based system, hypothetical target)
+    - Boot
+        - Grub2
+        - Plymouth
+        - Login/Session manager
+
+    Snapper (snapshot management)
+
+    - UI/UX
+        - hyprland and graphical shell utilities
+            - terminal
+            - file manager
+            - config manager (GUI)
+            - etc...
+
+    Container managment layer (app portability and sandboxxing)
+        - docker
+        - distrobox
+        - podman
+        - WINE/Bottle/Lutris
+
+    APP/Libs
+        - IDE
+        - Libs (python, npm/npx/node, etc...)
+        - Dev Tools
+        - Media Tools
+        - Extras
+        - etc...
+
+
+Grub2 - themed (RaBbLE), hiDPI compliant
+Plymouth - themed (RaBbLE)
+
+RaBbLE Login (SDDM? Greetd? lightDM?)
+
+Customized default interactive shell (zsh - themed - RaBbLE)
+Customized portable fallback shell (BASH - themed - RaBbLE)
+
+
+Create custom grub2 and plymouth themes that are RaBbLE branded.
+
+All theming and config should be editable in the main repo and deployable in realtime via bootstrap scripts. 
+
+

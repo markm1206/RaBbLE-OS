@@ -1,0 +1,107 @@
+---
+# =============================================================================
+# tuned — Profile Management
+# tuned is always installed and configured regardless of power_stack_profile.
+# In tuned_asus / full_asus it coexists with asusd (CPU gov only).
+# =============================================================================
+
+- name: Install tuned
+  become: true
+  ansible.builtin.dnf:
+    name:
+      - tuned
+      - tuned-utils
+      - tuned-profiles-atomic    # extra profile collection
+    state: present
+  tags: [system-services, tuned]
+
+- name: Enable and start tuned service
+  become: true
+  ansible.builtin.systemd:
+    name: tuned
+    enabled: true
+    state: started
+    daemon_reload: true
+  tags: [system-services, tuned]
+
+- name: Deploy balanced-asus custom profile directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/tuned/balanced-asus
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags: [system-services, tuned]
+
+- name: Deploy performance-asus custom profile directory
+  become: true
+  ansible.builtin.file:
+    path: /etc/tuned/performance-asus
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags: [system-services, tuned]
+
+- name: Deploy balanced-asus tuned profile
+  become: true
+  ansible.builtin.template:
+    src: tuned/balanced-asus/tuned.conf.j2
+    dest: /etc/tuned/balanced-asus/tuned.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  tags: [system-services, tuned]
+  notify: reload tuned
+
+- name: Deploy performance-asus tuned profile
+  become: true
+  ansible.builtin.template:
+    src: tuned/performance-asus/tuned.conf.j2
+    dest: /etc/tuned/performance-asus/tuned.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  tags: [system-services, tuned]
+  notify: reload tuned
+
+- name: Set active tuned profile
+  become: true
+  ansible.builtin.command: tuned-adm profile {{ tuned_active_profile }}
+  register: tuned_profile_result
+  changed_when: "'Switching to profile' in tuned_profile_result.stdout"
+  tags: [system-services, tuned]
+
+- name: Verify active tuned profile
+  become: true
+  ansible.builtin.command: tuned-adm active
+  register: tuned_active_check
+  changed_when: false
+  tags: [system-services, tuned, verify]
+
+- name: Report active tuned profile
+  ansible.builtin.debug:
+    msg: "{{ tuned_active_check.stdout }}"
+  tags: [system-services, tuned, verify]
+
+# ── Rollback ──────────────────────────────────────────────────────────────────
+
+- name: Rollback — restore tuned to stock balanced profile
+  become: true
+  ansible.builtin.command: tuned-adm profile balanced
+  when: tuned_rollback | bool
+  tags: [system-services, tuned, rollback]
+
+- name: Rollback — remove custom asus tuned profiles
+  become: true
+  ansible.builtin.file:
+    path: "/etc/tuned/{{ item }}"
+    state: absent
+  loop:
+    - balanced-asus
+    - performance-asus
+  when: tuned_rollback | bool
+  tags: [system-services, tuned, rollback]

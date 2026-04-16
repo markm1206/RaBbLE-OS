@@ -1,0 +1,8 @@
+---
+# system-services internal defaults — override in group_vars/all.yml
+power_stack_profile: "{{ power_stack_profile | default('tuned_only') }}"
+tuned_active_profile: "{{ tuned_active_profile | default('balanced') }}"
+gpu_mode: "{{ gpu_mode | default('integrated') }}"
+asus_power_profile: "{{ asus_power_profile | default('Balanced') }}"
+power_stack_rollback: "{{ power_stack_rollback | default(false) }}"
+tuned_rollback: "{{ tuned_rollback | default(false) }}"

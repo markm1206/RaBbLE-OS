@@ -1,0 +1,44 @@
+---
+# ╔══════════════════════════════════════════════════════════════╗
+# ║           RaBbLE-OS — Master Playbook (site.yml)             ║
+# ║   Run: ansible-playbook ansible/site.yml --ask-become-pass   ║
+# ╚══════════════════════════════════════════════════════════════╝
+#
+# USAGE:
+#   Full build:        ansible-playbook ansible/site.yml -K
+#   Single role:       ansible-playbook ansible/site.yml -K --tags hardware
+#   Skip heavy roles:  ansible-playbook ansible/site.yml -K --skip-tags nvidia
+#   Dry run:           ansible-playbook ansible/site.yml -K --check
+
+- name: RaBbLE — Full System Configuration
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+
+    - role: core
+      tags: [core]
+
+    - role: hardware
+      tags: [hardware]
+      # hardware role self-guards internally via hardware_vendor var,
+      # but the explicit when here makes intent readable in --list-tasks
+
+    - role: system-services
+      tags: [system-services]
+
+    - role: runtime
+      tags: [runtime]
+      when: npu_enabled | bool
+
+    - role: observability
+      tags: [observability]
+
+    - role: ui_ux/hyprland
+      tags: [ui_ux, hyprland]
+      become: false
+      when: form_factor in ['laptop', 'desktop']
+
+ # ── Developer Extras ───────────────────────────────────────────────────────────
+    - role: dev-tools
+      tags: [dev-tools]

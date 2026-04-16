@@ -1,0 +1,42 @@
+---
+# =============================================================================
+# asusd (asusctl) — Fan Curves + Platform TDP
+# Only active when power_stack_profile in [tuned_asus, full_asus]
+# =============================================================================
+
+- name: Install asusctl
+  become: true
+  ansible.builtin.dnf:
+    name: asusctl
+    state: present
+  tags: [system-services, asus, asusd]
+
+- name: Enable asusd service
+  become: true
+  ansible.builtin.systemd:
+    name: asusd
+    enabled: "{{ power_stack_profile in ['tuned_asus', 'full_asus'] }}"
+    state: "{{ 'started' if power_stack_profile in ['tuned_asus', 'full_asus'] else 'stopped' }}"
+    daemon_reload: true
+  tags: [system-services, asus, asusd]
+
+- name: Set ASUS power profile via asusctl
+  ansible.builtin.command: asusctl profile -P {{ asus_power_profile | default('Balanced') }}
+  changed_when: false
+  when: power_stack_profile in ['tuned_asus', 'full_asus']
+  failed_when: false
+  tags: [system-services, asus, asusd]
+  # Valid: Balanced | Performance | Quiet
+
+- name: Report asusd status
+  ansible.builtin.command: asusctl profile
+  register: asus_profile_status
+  changed_when: false
+  failed_when: false
+  when: power_stack_profile in ['tuned_asus', 'full_asus']
+  tags: [system-services, asus, asusd, verify]
+
+- name: Show ASUS profile status
+  ansible.builtin.debug:
+    msg: "{{ asus_profile_status.stdout | default('asusd not active') }}"
+  tags: [system-services, asus, asusd, verify]

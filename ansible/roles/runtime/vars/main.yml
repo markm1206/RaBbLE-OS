@@ -1,0 +1,3 @@
+---
+npu_enabled: "{{ npu_enabled | default(true) }}"
+xrt_rollback: "{{ xrt_rollback | default(false) }}"

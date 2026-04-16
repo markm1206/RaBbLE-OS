@@ -1,0 +1,145 @@
+---
+# =============================================================================
+# XRT + XDNA2 Userspace Runtime
+# Provides /dev/accel access and NPU programming interfaces for agents.
+#
+# Fedora 43 install path:
+#   Option A (preferred): AMD COPR — binary RPMs, auto-updates
+#   Option B (fallback):  Build from source (slow, last resort)
+#
+# Post-install verification:
+#   xrt-smi examine          → shows NPU device
+#   ls /dev/accel/           → should show accel0 or similar
+# =============================================================================
+
+# ── Repository Setup ──────────────────────────────────────────────────────────
+
+- name: Check if XRT COPR repo already enabled
+  ansible.builtin.stat:
+    path: /etc/yum.repos.d/_copr:copr.fedorainfracloud.org:amdxrt:xrt.repo
+  register: xrt_copr_stat
+  tags: [runtime, xrt, npu]
+
+- name: Enable AMD XRT COPR repository
+  become: true
+  ansible.builtin.command: >
+    dnf copr enable -y amdxrt/xrt
+    fedora-{{ ansible_distribution_major_version }}-x86_64
+  when: not xrt_copr_stat.stat.exists
+  register: xrt_copr_result
+  failed_when: xrt_copr_result.rc != 0
+  tags: [runtime, xrt, npu]
+
+- name: Warn if COPR enable failed — check repo availability for Fedora version
+  ansible.builtin.debug:
+    msg: >
+      WARNING: AMD XRT COPR may not yet have Fedora {{ ansible_distribution_major_version }} builds.
+      Check https://copr.fedorainfracloud.org/coprs/amdxrt/xrt/
+      You may need to build from source: https://github.com/Xilinx/XRT
+  when:
+    - xrt_copr_result is defined
+    - xrt_copr_result.rc is defined
+    - xrt_copr_result.rc != 0
+  tags: [runtime, xrt, npu]
+
+# ── Package Installation ──────────────────────────────────────────────────────
+
+- name: Install XRT runtime packages
+  become: true
+  ansible.builtin.dnf:
+    name:
+      - xrt
+      - xrt-devel
+    state: present
+  register: xrt_install
+  failed_when: false          # Non-fatal — COPR may lag on new Fedora releases
+  tags: [runtime, xrt, npu]
+
+- name: Warn if XRT packages not found
+  ansible.builtin.debug:
+    msg: >
+      WARNING: XRT packages could not be installed from COPR.
+      NPU userspace runtime is not available.
+      Kernel module (amdxdna) may still be loaded — hardware layer is intact.
+      See grimoire/Architecture.md for manual build instructions.
+  when: xrt_install.failed | default(false)
+  tags: [runtime, xrt, npu]
+
+# ── Runtime Permissions ───────────────────────────────────────────────────────
+
+- name: Add current user to render group (required for /dev/accel access)
+  become: true
+  ansible.builtin.user:
+    name: "{{ ansible_user_id }}"
+    groups: render
+    append: true
+  tags: [runtime, xrt, npu]
+
+- name: Add current user to video group
+  become: true
+  ansible.builtin.user:
+    name: "{{ ansible_user_id }}"
+    groups: video
+    append: true
+  tags: [runtime, xrt, npu]
+
+# ── udev Rules ────────────────────────────────────────────────────────────────
+
+- name: Deploy udev rule for NPU device permissions
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/udev/rules.d/99-amdxdna.rules
+    content: |
+      # AMD NPU (XDNA2) — grant render group rw access
+      SUBSYSTEM=="accel", KERNEL=="accel*", GROUP="render", MODE="0660"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  tags: [runtime, xrt, npu]
+  notify: reload udev rules
+
+# ── Verification ──────────────────────────────────────────────────────────────
+
+- name: Check /dev/accel devices exist
+  ansible.builtin.find:
+    paths: /dev/accel
+    file_type: any
+  register: accel_devices
+  failed_when: false
+  tags: [runtime, xrt, npu, verify]
+
+- name: Run xrt-smi examine
+  ansible.builtin.command: xrt-smi examine
+  register: xrt_examine
+  changed_when: false
+  failed_when: false
+  tags: [runtime, xrt, npu, verify]
+
+- name: Report NPU runtime status
+  ansible.builtin.debug:
+    msg:
+      - "accel devices found: {{ accel_devices.files | length }}"
+      - "xrt-smi output:"
+      - "{{ xrt_examine.stdout_lines | default(['xrt-smi not available']) }}"
+  tags: [runtime, xrt, npu, verify]
+
+# ── Rollback ──────────────────────────────────────────────────────────────────
+
+- name: Rollback — remove XRT packages
+  become: true
+  ansible.builtin.dnf:
+    name:
+      - xrt
+      - xrt-devel
+    state: absent
+  when: xrt_rollback | default(false)
+  tags: [runtime, xrt, npu, rollback]
+
+- name: Rollback — remove udev NPU rule
+  become: true
+  ansible.builtin.file:
+    path: /etc/udev/rules.d/99-amdxdna.rules
+    state: absent
+  when: xrt_rollback | default(false)
+  tags: [runtime, xrt, npu, rollback]

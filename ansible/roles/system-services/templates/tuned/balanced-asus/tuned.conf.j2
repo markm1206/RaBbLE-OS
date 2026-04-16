@@ -1,0 +1,32 @@
+# =============================================================================
+# tuned profile: balanced-asus
+# Inherits from built-in 'balanced', adds laptop-specific optimisations.
+# Managed by Ansible — do not edit directly.
+# =============================================================================
+
+[main]
+summary=Balanced profile tuned for ASUS laptops with AMD Ryzen + XDNA2 NPU
+include=balanced
+
+[cpu]
+governor=schedutil
+energy_perf_bias=balance_power
+min_perf_pct=20
+max_perf_pct=80
+
+[disk]
+# APM value: 1 (max power save) – 254 (max perf). 128 = balanced.
+apm=128
+readahead=4096
+
+[usb]
+autosuspend=1
+
+[audio]
+timeout=10
+
+[script]
+script_pre={{ '${i:PROFILE_DIR}' }}/script.sh
+
+[vm]
+transparent_hugepages=madvise

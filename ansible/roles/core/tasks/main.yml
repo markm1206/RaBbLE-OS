@@ -1,0 +1,148 @@
+---
+# ansible/roles/core/tasks/main.yml
+# =============================================================================
+# Core / Base System — runs first on all targets
+#
+#   DNF optimisations and repo setup
+#   System upgrade
+#   Base CLI primitives (expected by all roles above)
+#   System fonts (terminus, noto — not aesthetic fonts)
+#   Locale, Flatpak, user groups, SSD trim
+#
+#   Layer 0 — Base
+#   No dependencies — this role assumes only a fresh Fedora install
+#
+#   Everything in this role answers YES to:
+#   "Would this be needed on a headless server?"
+#   If the answer is NO, it belongs in dev-tools or a ui_ux role.
+# =============================================================================
+
+# ── DNF optimisation ─────────────────────────────────────────────────────────
+- name: Optimise DNF configuration
+  ansible.builtin.blockinfile:
+    path: /etc/dnf/dnf.conf
+    marker: "# {mark} RaBbLE DNF CONFIG"
+    block: |
+      fastestmirror=True
+      max_parallel_downloads=10
+      defaultyes=True
+      keepcache=False
+      deltarpm=True
+  tags: [core, dnf]
+
+# ── Repos ─────────────────────────────────────────────────────────────────────
+- name: Enable RPM Fusion Free repo
+  ansible.builtin.dnf:
+    name: "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-{{ ansible_facts['distribution_major_version'] }}.noarch.rpm"
+    state: present
+    disable_gpg_check: true
+  tags: [core, repos]
+
+- name: Enable RPM Fusion Non-Free repo
+  ansible.builtin.dnf:
+    name: "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-{{ ansible_facts['distribution_major_version'] }}.noarch.rpm"
+    state: present
+    disable_gpg_check: true
+  tags: [core, repos]
+
+# ── System upgrade ────────────────────────────────────────────────────────────
+- name: Upgrade all base packages
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+    update_cache: true
+  tags: [core, upgrade]
+
+# ── Base CLI primitives ───────────────────────────────────────────────────────
+- name: Install base CLI primitives
+  ansible.builtin.dnf:
+    name:
+      # Shell
+      - bash          # Default shell — baseline for all scripting
+      - git           # Version control — required by nearly every role above
+      - git-lfs       # Git large file storage — repo assets
+      # File operations
+      - curl          # HTTP client — used by install scripts and Ansible tasks
+      - wget          # HTTP downloader — fallback and direct downloads
+      - rsync         # File sync and copy — dotfile deployment, backups
+      - unzip         # ZIP archive extraction
+      - p7zip         # 7z archive support — broader format coverage
+      - xz            # XZ/LZMA compression — common for source tarballs
+      - tar           # Archive tool — universal on Linux
+      # Build primitives (required by roles that compile from source)
+      - gcc           # C compiler — base build dependency
+      - gcc-c++       # C++ compiler — required by Quickshell and others
+      - make          # Build automation — Makefile support
+      - cmake         # Cross-platform build system — required by Quickshell
+      - pkg-config    # Library compile flag resolver — required by most builds
+      # Network
+      - NetworkManager        # Network management daemon
+      - nm-connection-editor  # GTK network config UI — WiFi, VPN setup
+      # Filesystem
+      - btrfs-progs   # Btrfs userspace tools — subvolume management, scrub
+      - snapper       # Btrfs snapshot manager — automated snapshots
+    state: present
+  tags: [core, packages]
+
+# ── Python base ───────────────────────────────────────────────────────────────
+- name: Install Python base
+  ansible.builtin.dnf:
+    name:
+      - python3       # Python interpreter — required by Ansible modules
+      - python3-pip   # Python package installer — base tooling
+      - python3-devel # Python headers — required for building Python extensions
+      - pipx          # Isolated Python app installer — used for Ansible itself
+    state: present
+  tags: [core, python]
+
+# ── System fonts ──────────────────────────────────────────────────────────────
+- name: Install system fonts
+  ansible.builtin.dnf:
+    name:
+      - terminus-fonts          # Bitmap font — GRUB, TTY, console (ter-v32b for 4K)
+      - terminus-fonts-console  # Console variant — vconsole.conf target
+      - google-noto-fonts-common # Noto sans/serif base — broad Unicode coverage
+      - google-noto-emoji-fonts  # Emoji rendering — terminal and desktop
+    state: present
+  tags: [core, fonts]
+
+# ── Locale ────────────────────────────────────────────────────────────────────
+- name: Set system locale to UTF-8
+  ansible.builtin.command:
+    cmd: localectl set-locale LANG={{ system_locale | default('en_US.UTF-8') }}
+  changed_when: false
+  tags: [core, system]
+
+# ── Flatpak ───────────────────────────────────────────────────────────────────
+- name: Ensure Flatpak is installed
+  ansible.builtin.dnf:
+    name: flatpak               # Universal app packaging — sandboxed, distro-agnostic
+    state: present
+  tags: [core, flatpak]
+
+- name: Add Flathub remote (system-wide)
+  ansible.builtin.command:
+    cmd: flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+  changed_when: false
+  tags: [core, flatpak]
+
+# ── User groups ───────────────────────────────────────────────────────────────
+- name: Ensure user is in required system groups
+  ansible.builtin.user:
+    name: "{{ ansible_facts['user_id'] }}"
+    groups:
+      - wheel   # sudo access
+      - audio   # audio device access — PipeWire/ALSA
+      - video   # video device access — brightness keys, GPU
+      - input   # input device access — libinput, evdev
+      - render  # GPU render node access — /dev/dri/renderD*
+    append: true
+  tags: [core, user]
+
+# ── SSD health ────────────────────────────────────────────────────────────────
+- name: Enable fstrim.timer for periodic SSD TRIM
+  ansible.builtin.systemd:
+    name: fstrim.timer          # Weekly TRIM pass — maintains SSD performance and longevity
+    enabled: true
+    state: started
+  tags: [core, system]

@@ -1,0 +1,84 @@
+---
+# ansible/roles/dev-tools/tasks/main.yml
+# =============================================================================
+# Dev Tools — Workstation-only tooling layer
+#
+#   CLI power tools (search, navigation, editing)
+#   System monitoring and diagnostics
+#   Terminal multiplexer
+#   Python tooling
+#   GUI editor (VSCodium)
+#
+#   Not part of base RaBbLE-OS — workstation targets only.
+#   Run: ansible-playbook ansible/site.yml -K --tags dev-tools
+#
+#   Layer 4 — Apps & Dev Tools
+#   Depends on: core (repos, DNF config, Python base)
+# =============================================================================
+
+# ── CLI search and navigation ─────────────────────────────────────────────────
+- name: Install CLI search and navigation tools
+  ansible.builtin.dnf:
+    name:
+      - ripgrep       # Fast recursive grep replacement — respects .gitignore
+      - fd-find       # Fast, user-friendly find replacement
+      - fzf           # Fuzzy finder — integrates with shell history, file search
+      - zoxide        # Smart cd that learns your most-used directories
+      - jq            # JSON processor and query tool — scripting essential
+      - yq            # YAML/JSON/TOML processor — same interface as jq
+    state: present
+  become: true
+  tags: [dev-tools, cli]
+
+# ── CLI output and display ────────────────────────────────────────────────────
+- name: Install CLI output and display tools
+  ansible.builtin.dnf:
+    name:
+      - bat           # cat replacement with syntax highlighting and line numbers
+      - eza           # Modern ls replacement — colour, icons, git status
+      - fastfetch     # System info display — faster neofetch replacement
+    state: present
+  become: true
+  tags: [dev-tools, cli]
+
+# ── System monitoring and diagnostics ────────────────────────────────────────
+- name: Install system monitoring tools
+  ansible.builtin.dnf:
+    name:
+      - evtest
+      - wev            # Wayland event viewer — inspect keycodes, button events, axis input
+    state: present
+  become: true
+  tags: [dev-tools, monitoring]
+
+# ── Terminal multiplexer ──────────────────────────────────────────────────────
+- name: Install terminal multiplexer
+  ansible.builtin.dnf:
+    name:
+      - tmux          # Terminal multiplexer — persistent sessions, splits, detach/reattach
+    state: present
+  become: true
+  tags: [dev-tools, terminal]
+
+# ── Editors ───────────────────────────────────────────────────────────────────
+- name: Install terminal editor
+  ansible.builtin.dnf:
+    name:
+      - neovim        # Extensible terminal editor — LSP, treesitter, plugin ecosystem
+    state: present
+  become: true
+  tags: [dev-tools, editors]
+
+# ── Python tooling ────────────────────────────────────────────────────────────
+- name: Install Python tooling
+  ansible.builtin.dnf:
+    name:
+      - python3-uv    # Fast Python package/project manager — replaces pip+venv workflow
+    state: present
+  become: true
+  tags: [dev-tools, python]
+
+# ── GUI editor ────────────────────────────────────────────────────────────────
+- name: Include VSCodium install
+  ansible.builtin.include_tasks: vscodium.yml
+  tags: [dev-tools, vscodium]
