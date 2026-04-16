@@ -56,8 +56,8 @@ hypr_config_files:
 # Deployed with mode 0755 via the "Deploy hypr scripts" task.
 
 hypr_scripts:
-  - src:  config/hypr/scripts/help.sh
-    dest: "{{ hypr_config_dir }}/scripts/help.sh"
+  - src:  config/hypr/scripts/kb-cycle.sh
+    dest: "{{ hypr_config_dir }}/scripts/kb-cycle.sh"
   - src:  config/hypr/scripts/screenshot.sh
     dest: "{{ hypr_config_dir }}/scripts/screenshot.sh"
 

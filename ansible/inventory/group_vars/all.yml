@@ -13,6 +13,7 @@ rabble_user: "{{ ansible_user }}"
 rabble_home: "/home/{{ ansible_user }}"
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
+rabble_repo_root:    "{{ rabble_home }}/RaBbLE-OS"   # Default clone location from Install.sh
 rabble_config_home:  "{{ rabble_home }}/.config"
 dotfiles_repo_root:  "{{ rabble_repo_root }}"
 
