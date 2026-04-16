@@ -1,0 +1,6 @@
+---
+# boot/plymouth/tasks/packages.yml — STUB
+- name: plymouth packages — stub
+  ansible.builtin.debug:
+    msg: "spark ~ boot/plymouth >> packages stub, no-op // %DORMANT%"
+  tags: [boot, plymouth, packages]

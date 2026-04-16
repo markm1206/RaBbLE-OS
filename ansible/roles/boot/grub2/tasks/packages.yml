@@ -1,0 +1,6 @@
+---
+# boot/grub2/tasks/packages.yml — STUB
+- name: grub2 packages — stub
+  ansible.builtin.debug:
+    msg: "spark ~ boot/grub2 >> packages stub, no-op // %DORMANT%"
+  tags: [boot, grub, packages]
