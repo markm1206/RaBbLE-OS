@@ -1,6 +1,6 @@
 ---
-# ui_ux/quickshell/tasks/config.yml — STUB
+# desktop/quickshell/tasks/config.yml — STUB
 - name: quickshell config — stub
   ansible.builtin.debug:
-    msg: "spark ~ ui_ux/quickshell >> config stub, no-op // %DORMANT%"
+    msg: "spark ~ desktop/quickshell >> config stub, no-op // %DORMANT%"
   tags: [desktop, quickshell, config]

@@ -12,6 +12,8 @@
 #   --tags plymouth              → Layer 2: Plymouth only
 #   --tags sddm                  → Layer 2: SDDM only
 #   --tags snapper               → Btrfs snapshots (cross-cutting)
+#   --tags runtime               → GPU/NPU runtimes (cross-cutting)
+#   --tags monitoring            → System observability stack (cross-cutting)
 #   --tags desktop               → Layer 3: Hyprland + shell stack
 #   --tags hyprland              → Layer 3: Hyprland only
 #   --tags apps                  → Layer 4: applications
@@ -56,6 +58,31 @@
   tags: [hardware, generic_x64]
   roles:
     - role: hardware/x64/generic
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Runtime — Cross-cutting
+# GPU/NPU userspace runtimes: XRT (XDNA2), CUDA, ROCm.
+# Conditional on hardware vars — safe to run on all hosts.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- name: "Runtime — GPU/NPU runtimes"
+  hosts: all
+  become: true
+  tags: [runtime]
+  roles:
+    - role: runtime
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Monitoring — Cross-cutting
+# System monitoring stack: btop, htop, nvtop, powertop, lm_sensors.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- name: "Monitoring — System observability stack"
+  hosts: all
+  become: true
+  tags: [monitoring]
+  roles:
+    - role: monitoring
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Layer 2 — Boot Chain

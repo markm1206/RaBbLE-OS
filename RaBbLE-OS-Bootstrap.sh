@@ -113,7 +113,7 @@ ${CYAN}  What was installed:${RESET}
     ✓ Hyprlock  (screen locker)
     ✓ Hypridle  (idle daemon)
     ✓ Waybar    (status bar)
-    ✓ Foot      (terminal)
+    ✓ Kitty     (terminal)
     ✓ Wofi      (app launcher)
     ✓ Mako      (notifications)
     ✓ Hyprpaper (wallpaper daemon)
@@ -125,7 +125,7 @@ ${CYAN}  Next steps:${RESET}
     3. Log in — RaBbLE-OS awaits
 
 ${YELLOW}  Keybindings (RaBbLE-OS defaults):${RESET}
-    Super + Enter     → Terminal (foot)
+    Super + Enter     → Terminal (kitty)
     Super + D         → App launcher (wofi)
     Super + Q         → Close window
     Super + Shift + E → Exit Hyprland

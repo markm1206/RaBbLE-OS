@@ -1,6 +1,0 @@
----
-# hardware/x64/asus_proart_p16/tasks/xrt.yml — STUB
-- name: "asus_proart_p16/xrt — stub"
-  ansible.builtin.debug:
-    msg: "spark ~ hardware/asus_proart_p16/xrt >> stub, no-op // %DORMANT%"
-  tags: [hardware]

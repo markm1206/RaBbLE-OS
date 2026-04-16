@@ -1,5 +1,5 @@
 ---
-# ui_ux/hyprland/tasks/packages.yml
+# desktop/hyprland/tasks/packages.yml
 - name: Enable Hyprland COPR
   community.general.copr:
     name: "{{ hyprland_copr }}"

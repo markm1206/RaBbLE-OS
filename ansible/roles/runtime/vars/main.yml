@@ -1,0 +1,9 @@
+---
+# Defaults — overridden by group_vars per hardware target
+npu:
+  enabled: "{{ npu.enabled | default(false) }}"
+  vendor:  "{{ npu.vendor  | default('none') }}"
+  family:  "{{ npu.family  | default('none') }}"
+  driver:  "{{ npu.driver  | default('none') }}"
+
+xrt_rollback: "{{ xrt_rollback | default(false) }}"

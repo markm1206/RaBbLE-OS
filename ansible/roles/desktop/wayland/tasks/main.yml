@@ -1,4 +1,4 @@
 ---
-# ui_ux/wayland/tasks/main.yml — STUB
+# desktop/wayland/tasks/main.yml — STUB
 - { ansible.builtin.include_tasks: packages.yml, tags: [desktop, wayland, packages] }
 

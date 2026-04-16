@@ -1,4 +1,4 @@
-# ansible/roles/ui_ux/hyprland/vars/main.yml
+# ansible/roles/desktop/hyprland/vars/main.yml
 # =============================================================================
 # Hyprland role — internal variables
 # vars/ = role-internal, not intended for override

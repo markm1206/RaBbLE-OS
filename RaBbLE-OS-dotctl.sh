@@ -47,23 +47,39 @@ divider() { echo -e "${MUTED}─────────────────
 declare -A BUNDLE_SRC=(
   [hypr]="config/hypr"
   [waybar]="config/waybar"
+  [quickshell]="config/quickshell"
+  [zsh]="config/shell/zsh"
+  [bash]="config/shell/bash"
+  [mako]="config/shell/mako.conf"
 )
 
 declare -A BUNDLE_DEST=(
   [hypr]="${HOME}/.config/hypr"
   [waybar]="${HOME}/.config/waybar"
+  [quickshell]="${HOME}/.config/quickshell"
+  [zsh]="${HOME}/.config/zsh"
+  [bash]="${HOME}"
+  [mako]="${HOME}/.config/mako/config"
 )
 
 declare -A BUNDLE_DESC=(
   [hypr]="Hyprland compositor config"
   [waybar]="Waybar status bar config + scripts"
+  [quickshell]="Quickshell QML bar & launcher"
+  [zsh]="Zsh config (Zinit + Powerlevel10k)"
+  [bash]="Bash config and aliases"
+  [mako]="Mako notification daemon config"
 )
 
-BUNDLE_ORDER=(hypr waybar)
+BUNDLE_ORDER=(hypr waybar quickshell zsh bash mako)
 
 declare -A BUNDLE_RELOAD=(
   [hypr]="hyprctl reload"
   [waybar]="pkill -x waybar || true; setsid --fork waybar &>/dev/null"
+  [quickshell]="pkill -x quickshell || true; setsid --fork quickshell &>/dev/null"
+  [zsh]="source ${HOME}/.config/zsh/.zshrc 2>/dev/null || true"
+  [bash]="source ${HOME}/.bashrc 2>/dev/null || true"
+  [mako]="makoctl reload"
 )
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

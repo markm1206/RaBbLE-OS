@@ -63,7 +63,9 @@ The playbook at `ansible/site.yml` is organized into ordered layers, each with i
 | 1 | `hardware` | Hardware-specific drivers (`roles/hardware/x64/asus_proart_p16` or `generic`) |
 | 2 | `boot` | GRUB2 → Plymouth → SDDM (`roles/boot/{grub2,plymouth,session_manager}`) |
 | — | `snapper` | Btrfs snapshot management (`roles/snapper`) — cross-cutting |
-| 3 | `desktop` | Hyprland, Quickshell, terminal, zsh, bash (`roles/ui_ux/*`) |
+| — | `runtime` | GPU/NPU runtimes: XRT/CUDA/ROCm (`roles/runtime`) — cross-cutting |
+| — | `monitoring` | System observability: btop/htop/nvtop/powertop (`roles/monitoring`) — cross-cutting |
+| 3 | `desktop` | Hyprland, Quickshell, terminal, zsh, bash (`roles/desktop/*`) |
 | 4 | `apps` | Dev tools, IDE, browsers (`roles/apps`) |
 | — | `dotfiles` | Re-linkable dotfile symlink pass (user-level, no become) |
 

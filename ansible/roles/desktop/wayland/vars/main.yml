@@ -1,4 +1,4 @@
-# ansible/roles/ui_ux/wayland/vars/main.yml
+# ansible/roles/desktop/wayland/vars/main.yml
 # =============================================================================
 # wayland role — internal variables
 # vars/ = role-internal, not intended for override
