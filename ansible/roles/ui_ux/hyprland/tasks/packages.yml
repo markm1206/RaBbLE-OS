@@ -1,6 +1,0 @@
----
-# ui_ux/hyprland/tasks/packages.yml — STUB
-- name: hyprland packages — stub
-  ansible.builtin.debug:
-    msg: "spark ~ ui_ux/hyprland >> packages stub, no-op // %DORMANT%"
-  tags: [desktop, hyprland, packages]

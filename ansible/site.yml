@@ -102,40 +102,96 @@
 # Runs as user (become: false) — dotfiles live in $HOME.
 # ─────────────────────────────────────────────────────────────────────────────
 
+- name: "Layer 3 — Desktop: Wayland core"
+  hosts: all
+  become: true
+  tags: [desktop, wayland]
+  roles:
+    - role: desktop/wayland
+
 - name: "Layer 3 — Desktop: Hyprland"
   hosts: all
   become: true
   tags: [desktop, hyprland]
   roles:
-    - role: ui_ux/hyprland
+    - role: desktop/hyprland
 
 - name: "Layer 3 — Desktop: Quickshell"
   hosts: all
   become: true
   tags: [desktop, quickshell]
   roles:
-    - role: ui_ux/quickshell
+    - role: desktop/quickshell
 
 - name: "Layer 3 — Desktop: Terminal"
   hosts: all
   become: true
   tags: [desktop, terminal]
   roles:
-    - role: ui_ux/terminal
+    - role: desktop/terminal
+
+- name: "Layer 3 — Desktop: Waybar"
+  hosts: all
+  become: true
+  tags: [desktop, waybar]
+  roles:
+    - role: desktop/waybar
+
+- name: "Layer 3 — Desktop: Notifications (mako)"
+  hosts: all
+  become: true
+  tags: [desktop, notifications]
+  roles:
+    - role: desktop/notifications
+
+- name: "Layer 3 — Desktop: Screenshot (grim/slurp)"
+  hosts: all
+  become: true
+  tags: [desktop, screenshot]
+  roles:
+    - role: desktop/screenshot
+
+- name: "Layer 3 — Desktop: Launcher (fuzzel)"
+  hosts: all
+  become: true
+  tags: [desktop, launcher]
+  roles:
+    - role: desktop/launcher
+
+- name: "Layer 3 — Desktop: Network applet"
+  hosts: all
+  become: true
+  tags: [desktop, network-applet]
+  roles:
+    - role: desktop/network-applet
+
+- name: "Layer 3 — Desktop: V4L2 utils"
+  hosts: all
+  become: true
+  tags: [desktop, v4l2]
+  roles:
+    - role: desktop/v4l2
+
+- name: "Layer 3 — Desktop: SwayOSD"
+  hosts: all
+  become: true
+  tags: [desktop, swayosd]
+  roles:
+    - role: desktop/swayosd
 
 - name: "Layer 3 — Desktop: ZSH"
   hosts: all
   become: false
   tags: [desktop, shell, zsh]
   roles:
-    - role: ui_ux/shell/zsh
+    - role: desktop/shell/zsh
 
 - name: "Layer 3 — Desktop: Bash"
   hosts: all
   become: false
   tags: [desktop, shell, bash]
   roles:
-    - role: ui_ux/shell/bash
+    - role: desktop/shell/bash
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Dotfiles — Symlink pass
@@ -147,16 +203,16 @@
   become: false
   tags: [dotfiles]
   roles:
-    - role: ui_ux/hyprland
+    - role: desktop/hyprland
       vars:
         hyprland_tasks_only: dotfiles
-    - role: ui_ux/quickshell
+    - role: desktop/quickshell
       vars:
         quickshell_tasks_only: dotfiles
-    - role: ui_ux/shell/zsh
+    - role: desktop/shell/zsh
       vars:
         zsh_tasks_only: dotfiles
-    - role: ui_ux/shell/bash
+    - role: desktop/shell/bash
       vars:
         bash_tasks_only: dotfiles
 
