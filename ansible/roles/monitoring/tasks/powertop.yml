@@ -6,13 +6,6 @@
 # this is the durable system-level effect we care about deploying.
 # =============================================================================
 
-- name: Install powertop
-  become: true
-  ansible.builtin.dnf:
-    name: powertop
-    state: present
-  tags: [monitoring, powertop]
-
 - name: Deploy powertop auto-tune systemd unit
   become: true
   ansible.builtin.copy:
@@ -42,9 +35,10 @@
   ansible.builtin.systemd:
     name: powertop
     enabled: true
-    state: started
     daemon_reload: true
   tags: [monitoring, powertop]
+  # state: omitted intentionally — Type=oneshot runs at boot, not mid-playbook.
+  # Starting it live fires --auto-tune on a running desktop (disrupts USB/audio).
 
 # ── Rollback ──────────────────────────────────────────────────────────────────
 
