@@ -1,0 +1,6 @@
+---
+# boot/plymouth/tasks/config.yml — STUB
+- name: plymouth config — stub
+  ansible.builtin.debug:
+    msg: "spark ~ boot/plymouth >> config stub, no-op // %DORMANT%"
+  tags: [boot, plymouth, config]

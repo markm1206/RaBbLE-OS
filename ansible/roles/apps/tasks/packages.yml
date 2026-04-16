@@ -1,0 +1,6 @@
+---
+# apps/tasks/packages.yml — STUB
+- name: apps packages — stub
+  ansible.builtin.debug:
+    msg: "spark ~ apps >> packages stub, no-op // %DORMANT%"
+  tags: [apps, packages]

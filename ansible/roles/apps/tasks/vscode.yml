@@ -1,0 +1,6 @@
+---
+# apps/tasks/vscode.yml — STUB
+- name: vscode — stub
+  ansible.builtin.debug:
+    msg: "spark ~ apps/vscode >> stub, no-op // %DORMANT%"
+  tags: [apps, vscode]

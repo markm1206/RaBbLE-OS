@@ -1,0 +1,173 @@
+---
+# ansible/site.yml — RaBbLE-OS Master Playbook
+#
+# transcribe ~ site-yml >> layer order crystallized // %SITE_LOCKED%
+#
+# Tag conventions:
+#   --tags base                  → Layer 0: core system
+#   --tags hardware              → Layer 1: hardware abstraction (all targets)
+#   --tags asus_proart_p16       → Layer 1: ProArt P16 only
+#   --tags boot                  → Layer 2: boot chain
+#   --tags grub                  → Layer 2: GRUB2 only
+#   --tags plymouth              → Layer 2: Plymouth only
+#   --tags sddm                  → Layer 2: SDDM only
+#   --tags snapper               → Btrfs snapshots (cross-cutting)
+#   --tags desktop               → Layer 3: Hyprland + shell stack
+#   --tags hyprland              → Layer 3: Hyprland only
+#   --tags apps                  → Layer 4: applications
+#   --tags dotfiles              → Dotfile symlinks only (user-level)
+#
+# Packages/config split (combine with above):
+#   --tags base,packages         → Layer 0 packages only
+#   --tags base,config           → Layer 0 config only
+#   --tags hardware,packages     → Layer 1 packages only
+#   --tags hardware,config       → Layer 1 config only
+#
+# Full deploy (no tag filter):
+#   ansible-playbook -i inventory/hosts.yml site.yml -K
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Layer 0 — Base System
+# All hosts. Always runs first.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- name: "Layer 0 — Base system"
+  hosts: all
+  become: true
+  tags: [base]
+  roles:
+    - role: core
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Layer 1 — Hardware Abstraction
+# Dispatches to the correct hardware role via host group membership.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- name: "Layer 1 — Hardware: ASUS ProArt P16"
+  hosts: asus_proart_p16
+  become: true
+  tags: [hardware, asus_proart_p16]
+  roles:
+    - role: hardware/x64/asus_proart_p16
+
+- name: "Layer 1 — Hardware: Generic x64"
+  hosts: generic_x64
+  become: true
+  tags: [hardware, generic_x64]
+  roles:
+    - role: hardware/x64/generic
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Layer 2 — Boot Chain
+# GRUB2 → Plymouth → SDDM
+# Each sub-role is independently taggable.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- name: "Layer 2 — Boot: GRUB2"
+  hosts: all
+  become: true
+  tags: [boot, grub]
+  roles:
+    - role: boot/grub2
+
+- name: "Layer 2 — Boot: Plymouth"
+  hosts: all
+  become: true
+  tags: [boot, plymouth]
+  roles:
+    - role: boot/plymouth
+
+- name: "Layer 2 — Boot: SDDM session manager"
+  hosts: all
+  become: true
+  tags: [boot, sddm]
+  roles:
+    - role: boot/session_manager
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Snapper — Cross-cutting
+# Btrfs snapshot management. Runs independently of layer order.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- name: "Snapper — Btrfs snapshots"
+  hosts: all
+  become: true
+  tags: [snapper]
+  roles:
+    - role: snapper
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Layer 3 — Desktop
+# Hyprland compositor, shell stack, terminal, dotfiles.
+# Runs as user (become: false) — dotfiles live in $HOME.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- name: "Layer 3 — Desktop: Hyprland"
+  hosts: all
+  become: true
+  tags: [desktop, hyprland]
+  roles:
+    - role: ui_ux/hyprland
+
+- name: "Layer 3 — Desktop: Quickshell"
+  hosts: all
+  become: true
+  tags: [desktop, quickshell]
+  roles:
+    - role: ui_ux/quickshell
+
+- name: "Layer 3 — Desktop: Terminal"
+  hosts: all
+  become: true
+  tags: [desktop, terminal]
+  roles:
+    - role: ui_ux/terminal
+
+- name: "Layer 3 — Desktop: ZSH"
+  hosts: all
+  become: false
+  tags: [desktop, shell, zsh]
+  roles:
+    - role: ui_ux/shell/zsh
+
+- name: "Layer 3 — Desktop: Bash"
+  hosts: all
+  become: false
+  tags: [desktop, shell, bash]
+  roles:
+    - role: ui_ux/shell/bash
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dotfiles — Symlink pass
+# Re-linkable independently. Safe to run repeatedly.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- name: "Dotfiles — Symlink ~/.config entries"
+  hosts: all
+  become: false
+  tags: [dotfiles]
+  roles:
+    - role: ui_ux/hyprland
+      vars:
+        hyprland_tasks_only: dotfiles
+    - role: ui_ux/quickshell
+      vars:
+        quickshell_tasks_only: dotfiles
+    - role: ui_ux/shell/zsh
+      vars:
+        zsh_tasks_only: dotfiles
+    - role: ui_ux/shell/bash
+      vars:
+        bash_tasks_only: dotfiles
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Layer 4 — Applications
+# Dev tools, IDE, browsers.
+# ─────────────────────────────────────────────────────────────────────────────
+
+- name: "Layer 4 — Applications"
+  hosts: all
+  become: true
+  tags: [apps]
+  roles:
+    - role: apps

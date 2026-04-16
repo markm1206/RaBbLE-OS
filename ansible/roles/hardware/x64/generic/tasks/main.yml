@@ -1,0 +1,4 @@
+---
+# hardware/x64/generic/tasks/main.yml — STUB
+- { ansible.builtin.include_tasks: packages.yml, tags: [hardware, generic_x64, packages] }
+- { ansible.builtin.include_tasks: config.yml,   tags: [hardware, generic_x64, config]   }

@@ -1,0 +1,6 @@
+---
+# hardware/x64/asus_proart_p16/tasks/asusctl.yml — STUB
+- name: "asus_proart_p16/asusctl — stub"
+  ansible.builtin.debug:
+    msg: "spark ~ hardware/asus_proart_p16/asusctl >> stub, no-op // %DORMANT%"
+  tags: [hardware]
