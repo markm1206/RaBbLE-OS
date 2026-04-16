@@ -1,0 +1,33 @@
+---
+# ╔══════════════════════════════════════════════════════════════╗
+# ║           RaBbLE-OS — Master Playbook (site.yml)             ║
+# ║   Run: ansible-playbook ansible/site.yml --ask-become-pass   ║
+# ╚══════════════════════════════════════════════════════════════╝
+#
+# USAGE:
+#   Full build:        ansible-playbook ansible/site.yml -K
+#   Single role:       ansible-playbook ansible/site.yml -K --tags hardware
+#   Skip heavy roles:  ansible-playbook ansible/site.yml -K --skip-tags nvidia
+#   Dry run:           ansible-playbook ansible/site.yml -K --check
+
+- name: RaBbLE — Full System Configuration
+  hosts: all
+  become: true
+  gather_facts: true
+
+  roles:
+  
+
+    # ── Core / base system ──────────────────────────────────────────────────
+    - role: core
+      tags: [core]
+      become: true
+
+    # ── UI / UX ─────────────────────────────────────────────────────────────
+    - role: ui_ux/hyprland
+      tags: [ui_ux, hyprland]
+      become: false
+
+    # ── Dev Tools ───────────────────────────────────────────────────────────
+    - role: dev-tools
+      tags: [dev-tools]

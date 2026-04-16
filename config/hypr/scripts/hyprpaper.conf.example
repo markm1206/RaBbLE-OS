@@ -1,0 +1,10 @@
+# dotfiles/hyprland/scripts/hyprpaper.conf.example
+# Copy to ~/.config/hypr/hyprpaper.conf and set your wallpaper path.
+# This file is intentionally NOT symlinked — wallpaper is machine-local.
+
+preload = ~/Pictures/Wallpapers/rabble-default.jpg
+wallpaper = eDP-1,~/Pictures/Wallpapers/rabble-default.jpg
+wallpaper = ,~/Pictures/Wallpapers/rabble-default.jpg   # fallback all monitors
+
+splash = false
+ipc = on

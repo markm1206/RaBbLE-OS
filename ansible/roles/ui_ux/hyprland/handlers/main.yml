@@ -1,0 +1,8 @@
+# ansible/roles/ui_ux/hyprland/handlers/main.yml
+# =============================================================================
+
+- name: Restart systemd-logind
+  ansible.builtin.systemd:
+    name: systemd-logind
+    state: reloaded        # ← was: restarted
+  become: true
