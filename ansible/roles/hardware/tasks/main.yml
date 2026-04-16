@@ -1,0 +1,24 @@
+---
+# ╔══════════════════════════════════════════════════════════╗
+# ║  Role: hardware — Dispatcher (main.yml)                  ║
+# ║  Routes to sub-tasks based on group_vars/all.yml flags   ║
+# ╚══════════════════════════════════════════════════════════╝
+
+- name: Configure AMD iGPU (Radeon 890M)
+  import_tasks: amdgpu.yml
+  tags: hardware-amd
+
+- name: Blacklist nouveau and install NVIDIA drivers
+  import_tasks: nvidia.yml
+  when: hardware.dgpu is defined and 'nvidia' in hardware.dgpu
+  tags: hardware-nvidia
+
+- name: Install ASUS platform stack (asusctl + supergfxctl)
+  import_tasks: asusctl.yml
+  when: hardware.platform == "asus_laptop"
+  tags: hardware-asus
+
+- name: Configure AMD XDNA2 NPU userspace stack
+  import_tasks: npu_xdna2.yml
+  when: hardware.npu == "amd_xdna2"
+  tags: hardware-npu

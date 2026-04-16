@@ -1,0 +1,29 @@
+---
+# ╔══════════════════════════════════════════════════════════╗
+# ║  Role: dev-tools — Developer add-on tools                ║
+# ║  Not part of base RaBbLE-OS.                             ║
+# ║  Run: ansible-playbook ansible/site.yml -K --tags dev-tools ║
+# ╚══════════════════════════════════════════════════════════╝
+
+# ── CLI tools (all under 10MB installed) ─────────────────────────
+- name: Install CLI developer tools
+  ansible.builtin.dnf:
+    name:
+      - ripgrep       # Fast grep replacement
+      - fd-find       # Fast find replacement
+      - bat           # cat with syntax highlighting
+      - eza           # Modern ls replacement
+      - zoxide        # Smart cd — learns your most used dirs
+      - fzf           # Fuzzy finder for terminal
+      - tmux          # Terminal multiplexer
+      - neovim        # Terminal editor
+      - python3-uv    # Fast Python package manager — replaces curl install
+    state: present
+  become: true
+  tags: [dev-tools]
+
+# ── VSCodium ──────────────────────────────────────────────────────
+- name: Include VSCodium install
+  ansible.builtin.include_tasks: vscodium.yml
+  tags: [dev-tools, vscodium]
+

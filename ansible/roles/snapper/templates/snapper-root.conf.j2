@@ -1,0 +1,30 @@
+# RaBbLE-OS Snapper root policy
+# Applied to: / (Btrfs subvolume 'root', ID 256)
+SUBVOLUME="/"
+FSTYPE="btrfs"
+
+# Allow unprivileged users to list snapshots of their data
+ALLOW_USERS="{{ rabble_user }}"
+ALLOW_GROUPS=""
+SYNC_ACL="no"
+
+# Snapshot settings
+BACKGROUND_COMPARISON="yes"
+NUMBER_CLEANUP="yes"
+NUMBER_MIN_AGE="1800"
+NUMBER_LIMIT="50"
+NUMBER_LIMIT_IMPORTANT="10"
+
+# Timeline (automatic periodic snapshots)
+TIMELINE_CREATE="yes"
+TIMELINE_CLEANUP="yes"
+TIMELINE_MIN_AGE="1800"
+TIMELINE_LIMIT_HOURLY="5"
+TIMELINE_LIMIT_DAILY="7"
+TIMELINE_LIMIT_WEEKLY="4"
+TIMELINE_LIMIT_MONTHLY="6"
+TIMELINE_LIMIT_YEARLY="2"
+
+# Empty pre/post snapshots
+EMPTY_PRE_POST_CLEANUP="yes"
+EMPTY_PRE_POST_MIN_AGE="1800"

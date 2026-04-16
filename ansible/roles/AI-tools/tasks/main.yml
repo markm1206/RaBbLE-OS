@@ -1,0 +1,221 @@
+---
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║  Role: ai-stack — RaBbLE Inference Infrastructure               ║
+# ║                                                                  ║
+# ║  STACK:                                                          ║
+# ║    llama.cpp  — primary local LLM inference (CUDA via RTX 4060) ║
+# ║    vLLM       — production LLM serving, OpenAI-compatible API   ║
+# ║    FastFlowLM — NPU-accelerated inference (XDNA2 when ready)    ║
+# ║                                                                  ║
+# ║  NOT in this role (removed/relocated):                           ║
+# ║    Ollama         — replaced by llama.cpp + vLLM                 ║
+# ║    Python AI venv — removed per project decision                 ║
+# ║    ONNX VitisAI   — FastFlowLM handles NPU path instead         ║
+# ║    xrt_npu        — moved to hardware/npu_xdna2 role            ║
+# ║    rocm           — not needed (Mesa iGPU, CUDA for dGPU)       ║
+# ║                                                                  ║
+# ║  PHASE GATING:                                                   ║
+# ║    Phase 0:   Install deps only (no GPU/NPU stack yet)           ║
+# ║    Phase 1:   llama.cpp CUDA build                               ║
+# ║    Phase 2:   vLLM + FastFlowLM (after XRT is fully working)    ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+# ─── Gate: check ai_stack flags ───────────────────────────────────
+- name: Print AI stack configuration
+  debug:
+    msg: |
+      AI Stack config:
+        llama_cpp_cuda: {{ ai_stack.llama_cpp_cuda }}
+        vllm:           {{ ai_stack.vllm }}
+        fastflowlm:     {{ ai_stack.fastflowlm }}
+        Phase:          {{ ai_stack.phase }}
+
+# ─── Core system dependencies (always install) ───────────────────
+- name: Install CUDA toolkit (required by llama.cpp + vLLM)
+  dnf:
+    name:
+      - cuda-toolkit
+      - cuda-devel
+    state: present
+  ignore_errors: yes
+  # cuda-toolkit requires NVIDIA repo — already set up by hardware/nvidia role
+  # If this fails: check 'dnf repolist | grep nvidia'
+
+- name: Install Python 3.11 (vLLM + FastFlowLM compatibility)
+  dnf:
+    name:
+      - python3.11
+      - python3.11-devel
+    state: present
+
+- name: Create RaBbLE AI workspace directory
+  file:
+    path: /opt/rabble/ai
+    state: directory
+    owner: "{{ rabble_user }}"
+    group: "{{ rabble_user }}"
+    mode: '0755'
+
+# ─── llama.cpp (Phase 1+) ────────────────────────────────────────
+- name: Clone llama.cpp
+  become_user: "{{ rabble_user }}"
+  git:
+    repo: https://github.com/ggerganov/llama.cpp.git
+    dest: /opt/rabble/ai/llama.cpp
+    depth: 1
+  when: ai_stack.llama_cpp_cuda
+  register: llamacpp_cloned
+
+- name: Build llama.cpp with CUDA backend (RTX 4060 via PRIME)
+  become_user: "{{ rabble_user }}"
+  shell: |
+    cd /opt/rabble/ai/llama.cpp
+    cmake -B build \
+      -DGGML_CUDA=ON \
+      -DCMAKE_CUDA_ARCHITECTURES=89 \
+      -DCMAKE_BUILD_TYPE=Release
+    cmake --build build --config Release -j $(nproc)
+  environment:
+    # Route CUDA compilation to RTX 4060 via PRIME offload
+    DRI_PRIME: "pci-0000_64_00_0"
+    __NV_PRIME_RENDER_OFFLOAD: "1"
+    __GLX_VENDOR_LIBRARY_NAME: "nvidia"
+    CUDA_VISIBLE_DEVICES: "0"
+    PATH: "/usr/local/cuda/bin:{{ ansible_env.PATH }}"
+  when:
+    - ai_stack.llama_cpp_cuda
+    - ai_stack.phase | int >= 1
+    - llamacpp_cloned.changed or ai_stack.force_rebuild | default(false)
+  async: 1800   # 30 min timeout — CUDA compilation is slow
+  poll: 30
+
+- name: Deploy llama.cpp server wrapper script
+  copy:
+    dest: /usr/local/bin/rabble-llm
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      # RaBbLE-OS: llama.cpp server via RTX 4060 PRIME offload
+      # Usage: rabble-llm --model /path/to/model.gguf [args...]
+      #        rabble-llm --help
+      export DRI_PRIME=pci-0000_64_00_0
+      export __NV_PRIME_RENDER_OFFLOAD=1
+      export __GLX_VENDOR_LIBRARY_NAME=nvidia
+      export CUDA_VISIBLE_DEVICES=0
+      exec /opt/rabble/ai/llama.cpp/build/bin/llama-server "$@"
+  when: ai_stack.llama_cpp_cuda
+
+# ─── vLLM (Phase 2+) ─────────────────────────────────────────────
+# vLLM requires CUDA 11.8+ and Python 3.11
+# Install into a dedicated venv to avoid system Python conflicts
+- name: Create vLLM virtualenv (Python 3.11)
+  become_user: "{{ rabble_user }}"
+  command: python3.11 -m venv /opt/rabble/ai/vllm-venv
+  args:
+    creates: /opt/rabble/ai/vllm-venv/bin/activate
+  when:
+    - ai_stack.vllm
+    - ai_stack.phase | int >= 2
+
+- name: Install vLLM with CUDA support
+  become_user: "{{ rabble_user }}"
+  pip:
+    name:
+      - "vllm"
+      - "torch"
+      - "torchvision"
+    virtualenv: /opt/rabble/ai/vllm-venv
+    extra_args: "--index-url https://download.pytorch.org/whl/cu124"
+  when:
+    - ai_stack.vllm
+    - ai_stack.phase | int >= 2
+  ignore_errors: yes  # Large install — may timeout on first run
+
+- name: Deploy vLLM server wrapper
+  copy:
+    dest: /usr/local/bin/rabble-vllm
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      # RaBbLE-OS: vLLM OpenAI-compatible server
+      # Usage: rabble-vllm --model <huggingface-model-id>
+      # API available at: http://localhost:8000
+      export DRI_PRIME=pci-0000_64_00_0
+      export __NV_PRIME_RENDER_OFFLOAD=1
+      export __GLX_VENDOR_LIBRARY_NAME=nvidia
+      export CUDA_VISIBLE_DEVICES=0
+      source /opt/rabble/ai/vllm-venv/bin/activate
+      exec python -m vllm.entrypoints.openai.api_server "$@"
+  when: ai_stack.vllm
+
+# ─── FastFlowLM (Phase 2+ — requires working XRT/NPU) ────────────
+# FastFlowLM is the NPU-accelerated inference path for XDNA2.
+# Do NOT install until: ulimit -l shows 'unlimited' AND
+# 'sudo -E /usr/xrt/bin/xrt-smi examine' shows the NPU device.
+- name: Check NPU readiness for FastFlowLM
+  stat:
+    path: /dev/accel/accel0
+  register: npu_ready
+  when: ai_stack.fastflowlm
+
+- name: Check XRT is installed
+  stat:
+    path: /usr/xrt/bin/xrt-smi
+  register: xrt_ready
+  when: ai_stack.fastflowlm
+
+- name: Clone FastFlowLM
+  become_user: "{{ rabble_user }}"
+  git:
+    repo: https://github.com/FastFlowLM/FastFlowLM.git
+    dest: /opt/rabble/ai/FastFlowLM
+    recursive: yes
+  when:
+    - ai_stack.fastflowlm
+    - ai_stack.phase | int >= 2
+    - npu_ready.stat.exists
+    - xrt_ready.stat.exists
+
+- name: Build FastFlowLM (requires XRT working + memlock unlimited)
+  become_user: "{{ rabble_user }}"
+  shell: |
+    cd /opt/rabble/ai/FastFlowLM
+    cmake -B build -DCMAKE_BUILD_TYPE=Release
+    cmake --build build -j $(nproc)
+  environment:
+    LD_LIBRARY_PATH: "/usr/xrt/lib:/usr/xrt/lib64"
+    XILINX_XRT: "/usr/xrt"
+  when:
+    - ai_stack.fastflowlm
+    - ai_stack.phase | int >= 2
+    - npu_ready.stat.exists
+    - xrt_ready.stat.exists
+  ignore_errors: yes  # Non-fatal — build may fail if XRT not fully configured
+
+- name: Deploy FastFlowLM wrapper script
+  copy:
+    dest: /usr/local/bin/rabble-flm
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      # RaBbLE-OS: FastFlowLM NPU inference wrapper
+      # Requires: working XRT + /dev/accel/accel0 + ulimit -l = unlimited
+      export LD_LIBRARY_PATH="/opt/rabble/ai/FastFlowLM/lib:/usr/xrt/lib:/usr/xrt/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+      export FLM_CONFIG_PATH="${FLM_CONFIG_PATH:-/opt/fastflowlm/share/flm/model_list.json}"
+      export XILINX_XRT=/usr/xrt
+      exec /opt/rabble/ai/FastFlowLM/build/bin/flm "$@"
+  when: ai_stack.fastflowlm
+
+# ─── Final status report ─────────────────────────────────────────
+- name: Final AI stack status report
+  debug:
+    msg: |
+      AI Stack deployment summary (Phase {{ ai_stack.phase }}):
+        llama.cpp CUDA: {{ '✅ built' if ai_stack.llama_cpp_cuda and ai_stack.phase|int >= 1 else '⏳ pending (Phase 1)' }}
+        vLLM:           {{ '✅ installed' if ai_stack.vllm and ai_stack.phase|int >= 2 else '⏳ pending (Phase 2)' }}
+        FastFlowLM:     {{ '✅ built' if ai_stack.fastflowlm and ai_stack.phase|int >= 2 else '⏳ pending (Phase 2 + working XRT)' }}
+
+      Commands when ready:
+        rabble-llm --model ~/models/your-model.gguf --port 8080
+        rabble-vllm --model meta-llama/Llama-3.2-3B-Instruct
+        rabble-flm validate      (requires NPU fully working)

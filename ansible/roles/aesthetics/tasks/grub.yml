@@ -1,0 +1,133 @@
+---
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║  Aesthetics: GRUB — Resolution Fix + Synthwave Theme             ║
+# ║                                                                  ║
+# ║  PROBLEM: ProArt P16 native res is 3840x2400. At native res,    ║
+# ║  GRUB text is microscopic. Must force a lower gfxmode.          ║
+# ║                                                                  ║
+# ║  STRATEGY:                                                       ║
+# ║    Phase 0:   Fix resolution + kernel cmdline (functional)       ║
+# ║    Phase 0.5: Deploy full synthwave theme (pretty)               ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+- name: Set GRUB gfxmode to readable resolution
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^#?GRUB_GFXMODE='
+    line: 'GRUB_GFXMODE=1280x800x32,auto'
+  notify: regenerate grub
+
+- name: Force GRUB to stay in graphics mode
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^#?GRUB_TERMINAL_OUTPUT='
+    line: 'GRUB_TERMINAL_OUTPUT="gfxterm"'
+  notify: regenerate grub
+
+- name: Set GRUB timeout
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_TIMEOUT='
+    line: 'GRUB_TIMEOUT=3'
+  notify: regenerate grub
+
+- name: Show GRUB menu (not hidden countdown)
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^#?GRUB_TIMEOUT_STYLE='
+    line: 'GRUB_TIMEOUT_STYLE=menu'
+  notify: regenerate grub
+
+- name: Set kernel cmdline parameters
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_CMDLINE_LINUX='
+    line: >-
+      GRUB_CMDLINE_LINUX="rhgb quiet splash plymouth.enable=1
+      rd.driver.blacklist=nouveau modprobe.blacklist=nouveau
+      video=efifb:off
+      mem_sleep_default=s2idle
+      nvidia.NVreg_PreserveVideoMemoryAllocations=1
+      nvidia.NVreg_TemporaryFilePath=/tmp"
+    # mem_sleep_default=s2idle: AMD Strix Point (HX 370) requires s2idle for
+    #   proper suspend — S3 (deep) is not supported on this platform.
+    # nvidia.NVreg_PreserveVideoMemoryAllocations=1: keep VRAM across suspend.
+    # efifb:off: prevents EFI framebuffer grabbing display before Plymouth.
+  notify: regenerate grub
+
+# ── Phase 0.5: Synthwave GRUB theme ──────────────────────────────
+
+- name: Create GRUB theme directory
+  file:
+    path: /boot/grub2/themes/rabble
+    state: directory
+    mode: '0755'
+
+- name: Check if full theme assets exist in repo
+  stat:
+    path: "{{ rabble_repo }}/ansible/roles/aesthetics/files/rabble-theme/grub/theme.txt"
+  register: grub_theme_exists
+
+- name: Deploy full GRUB theme if assets present
+  copy:
+    src: "{{ rabble_repo }}/ansible/roles/aesthetics/files/rabble-theme/grub/"
+    dest: /boot/grub2/themes/rabble/
+    remote_src: yes
+  when: grub_theme_exists.stat.exists
+  notify: regenerate grub
+
+- name: Deploy minimal fallback theme.txt (if full assets not yet present)
+  copy:
+    dest: /boot/grub2/themes/rabble/theme.txt
+    content: |
+      # RaBbLE-OS GRUB Theme — Minimal synthwave placeholder
+      # Replace with full graphical theme in Phase 0.5
+      title-text: "RaBbLE-OS"
+      desktop-color: "#0a0010"
+      terminal-font: "Unifont Regular 18"
+
+      + label {
+        top = 30%
+        left = 0
+        width = 100%
+        height = 60
+        text = "RaBbLE-OS"
+        font = "Unifont Regular 24"
+        color = "#ff2d78"
+        align = "center"
+      }
+
+      + boot_menu {
+        left = 15%
+        top = 40%
+        width = 70%
+        height = 40%
+        item_font = "Unifont Regular 18"
+        item_color = "#e8d5ff"
+        selected_item_color = "#0a0010"
+        item_height = 40
+        item_padding = 10
+        item_spacing = 5
+        scrollbar = true
+        scrollbar_width = 4
+      }
+
+      + progress_bar {
+        id = "__timeout__"
+        left = 15%
+        top = 85%
+        width = 70%
+        height = 4
+        fg_color = "#ff2d78"
+        bg_color = "#1a0040"
+        border_color = "#2a0060"
+      }
+  when: not grub_theme_exists.stat.exists
+  notify: regenerate grub
+
+- name: Point GRUB to RaBbLE theme
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^#?GRUB_THEME='
+    line: 'GRUB_THEME="/boot/grub2/themes/rabble/theme.txt"'
+  notify: regenerate grub

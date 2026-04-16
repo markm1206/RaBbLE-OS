@@ -1,0 +1,82 @@
+---
+# ╔══════════════════════════════════════════════════════════════╗
+# ║           RaBbLE-OS — Master Playbook (site.yml)             ║
+# ║   Run: ansible-playbook ansible/site.yml --ask-become-pass   ║
+# ╚══════════════════════════════════════════════════════════════╝
+#
+# USAGE:
+#   Full build:        ansible-playbook ansible/site.yml -K
+#   Single role:       ansible-playbook ansible/site.yml -K --tags hardware
+#   Skip heavy roles:  ansible-playbook ansible/site.yml -K --skip-tags nvidia
+#   Dry run:           ansible-playbook ansible/site.yml -K --check
+
+- name: RaBbLE-OS System Configuration
+  hosts: localhost
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Create pre-ansible Snapper snapshot
+      command: >
+        snapper -c root create
+        --type single
+        --description "pre-ansible-{{ ansible_date_time.iso8601 }}"
+      ignore_errors: yes  # Snapper may not be configured on first run
+      tags: snapshot
+
+    - name: Print RaBbLE-OS system info
+      debug:
+        msg: |
+          ╔══════════════════════════════════════════╗
+          ║         RaBbLE-OS Ansible Run            ║
+          ║  Host:   {{ inventory_hostname }}        ║
+          ║  Kernel: {{ ansible_kernel }}            ║
+          ║  Distro: {{ ansible_distribution }} {{ ansible_distribution_major_version }} ║
+          ╚══════════════════════════════════════════╝
+      tags: always
+
+  roles:
+    - role: base
+      tags: base
+
+    - role: hardware
+      tags: hardware
+
+    - role: snapper
+      tags: snapper
+
+    - role: kde
+      tags: kde
+      when: desktop.kde
+
+    - role: hyprland
+      tags: hyprland
+      when: desktop.hyprland
+
+    - role: aesthetics
+      tags: aesthetics
+
+    - role: dev-tools
+      tags: dev-tools
+
+    - role: AI-tools
+      tags: AI-tools
+
+  post_tasks:
+    - name: Create post-ansible Snapper snapshot
+      command: >
+        snapper -c root create
+        --type single
+        --description "post-ansible-{{ ansible_date_time.iso8601 }}"
+      ignore_errors: yes
+      tags: always
+
+    - name: RaBbLE-OS run complete
+      debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════╗
+          ║   RaBbLE-OS configuration complete.                  ║
+          ║   Review any CHANGED items above.                    ║
+          ║   Reboot recommended after first run.                ║
+          ╚══════════════════════════════════════════════════════╝
+      tags: always

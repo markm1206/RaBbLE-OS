@@ -1,0 +1,108 @@
+---
+# ╔══════════════════════════════════════════════════════════╗
+# ║  Role: base — Core OS configuration for RaBbLE-OS        ║
+# ╚══════════════════════════════════════════════════════════╝
+
+# ─── DNF Optimization ────────────────────────────────────────────
+- name: Configure DNF for speed and reliability
+  blockinfile:
+    path: /etc/dnf/dnf.conf
+    marker: "# {mark} RaBbLE-OS DNF CONFIG"
+    block: |
+      fastestmirror=True
+      max_parallel_downloads=10
+      defaultyes=True
+      keepcache=False
+      deltarpm=True
+
+# ─── System Locale ───────────────────────────────────────────────
+- name: Set system locale to UTF-8 (fixes SDDM locale warning)
+  command: localectl set-locale LANG={{ system_locale }}
+  changed_when: false
+
+# ─── RPM Fusion Repos ────────────────────────────────────────────
+- name: Install RPM Fusion Free repository
+  dnf:
+    name: "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-{{ ansible_distribution_major_version }}.noarch.rpm"
+    state: present
+    disable_gpg_check: yes
+
+- name: Install RPM Fusion Non-Free repository
+  dnf:
+    name: "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-{{ ansible_distribution_major_version }}.noarch.rpm"
+    state: present
+    disable_gpg_check: yes
+
+# ─── Flatpak ─────────────────────────────────────────────────────
+- name: Ensure Flatpak is installed
+  dnf:
+    name: flatpak
+    state: present
+
+- name: Add Flathub remote
+  command: flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+  changed_when: false
+
+# ─── Core System Packages ────────────────────────────────────────
+- name: Install core system packages
+  dnf:
+    name:
+      # System utilities
+      - git
+      - curl
+      - wget2
+      - rsync
+      - htop
+      - btop
+      - fastfetch
+      - unzip
+      - p7zip
+      - xz
+      - jq
+      - yq
+      # Hardware monitoring
+      - lm_sensors
+      - nvtop
+      - powertop
+      - stress-ng
+      # Filesystem tools
+      - btrfs-progs
+      - snapper
+      # Network
+      - NetworkManager
+      - nm-connection-editor
+      # Development base
+      - gcc
+      - gcc-c++
+      - make
+      - cmake
+      - git-lfs
+      # Python base (for Ansible and AI stack)
+      - python3
+      - python3-pip
+      - python3-devel
+      # Fonts (base — theme fonts installed in aesthetics role)
+      - google-noto-fonts-common
+      - google-noto-emoji-fonts
+      - jetbrains-mono-fonts
+    state: present
+
+# ─── Enable fstrim for SSD health ────────────────────────────────
+- name: Enable fstrim.timer (periodic SSD TRIM)
+  systemd:
+    name: fstrim.timer
+    enabled: yes
+    state: started
+
+# ─── Disable Unused Services ─────────────────────────────────────
+- name: Mask geoclue (location tracking) unless needed
+  systemd:
+    name: geoclue
+    masked: yes
+  ignore_errors: yes
+
+# ─── Ansible Requirements ────────────────────────────────────────
+- name: Install Ansible community.general collection (for copr module)
+  command: ansible-galaxy collection install community.general
+  become: no
+  changed_when: false

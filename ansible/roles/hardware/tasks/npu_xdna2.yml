@@ -1,0 +1,208 @@
+---
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║  Hardware: AMD XDNA2 NPU — Fedora 43 Userspace Stack             ║
+# ║                                                                  ║
+# ║  GROUND TRUTH (researched 2026-04-04):                           ║
+# ║  There is NO official AMD binary package for Fedora 43.          ║
+# ║  Two working paths:                                              ║
+# ║    A) COPR xanderlent/amd-npu-driver  (simpler, less current)   ║
+# ║    B) Build from source (amd/xdna-driver) → produces RPMs       ║
+# ║                                                                  ║
+# ║  WHY xrt-smi RUNS BUT DOESN'T SEE NPU:                          ║
+# ║  This is NOT a driver issue. Three root causes:                  ║
+# ║    1. memlock limit (default 8MB, needs unlimited)               ║
+# ║    2. LD_LIBRARY_PATH not set (/usr/xrt/lib missing)             ║
+# ║    3. Library symlinks may be broken after COPR install          ║
+# ║                                                                  ║
+# ║  VERIFIED HARDWARE:                                              ║
+# ║    /dev/accel/accel0 ✅  amdxdna 0.6.0 ✅  kernel 6.19 ✅       ║
+# ║    Same chip (17f0:10 Strix) confirmed working by lemonade#1315  ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+# ─── STEP 1: Verify kernel-side is working (it is) ───────────────
+- name: Confirm NPU device node is present
+  stat:
+    path: /dev/accel/accel0
+  register: npu_dev
+
+- name: Fail if NPU device missing (kernel driver problem, not this role)
+  fail:
+    msg: |
+      /dev/accel/accel0 not found. Kernel driver issue — not a userspace problem.
+      Run: dmesg | grep amdxdna
+      Expected: amdxdna 0.6.0 loaded for 0000:66:00.1
+  when: not npu_dev.stat.exists
+
+- name: Confirm amdxdna kernel module is loaded
+  command: lsmod
+  register: lsmod_out
+  changed_when: false
+
+- name: Report kernel state
+  debug:
+    msg: "amdxdna kernel module: {{ 'LOADED ✅' if 'amdxdna' in lsmod_out.stdout else 'NOT LOADED ⚠️' }}"
+
+# ─── STEP 2: Critical memlock fix (this is why xrt-smi sees nothing) ───
+- name: Deploy memlock limits for XDNA2 (THE critical fix)
+  copy:
+    dest: /etc/security/limits.d/99-amdxdna.conf
+    content: |
+      # RaBbLE-OS: AMD XDNA2 NPU requires unlimited memlock
+      # Without this, xrt-smi runs but cannot enumerate the NPU device
+      # A REBOOT is required for this to take effect
+      # Verified fix: lemonade-sdk/lemonade#1315 (same HX 370 hardware)
+      * soft memlock unlimited
+      * hard memlock unlimited
+  register: memlock_changed
+
+- name: Warn about reboot requirement for memlock
+  debug:
+    msg: |
+      ⚠️  memlock limits written. REBOOT REQUIRED for xrt-smi to see NPU.
+      After reboot, verify with: ulimit -l   (should print 'unlimited')
+  when: memlock_changed.changed
+
+# ─── STEP 3: Group membership ─────────────────────────────────────
+- name: Add user to render and video groups
+  user:
+    name: "{{ rabble_user }}"
+    groups:
+      - render
+      - video
+    append: yes
+
+- name: Deploy XDNA2 udev rule (unprivileged accel device access)
+  copy:
+    dest: /etc/udev/rules.d/99-amdxdna.rules
+    content: |
+      KERNEL=="accel*", SUBSYSTEM=="accel", GROUP="render", MODE="0660"
+  notify:
+    - reload udev rules
+    - trigger udev events
+
+# ─── STEP 4: COPR path ────────────────────────────────────────────
+# Fedora 43 does NOT have native amd-xdna packages in official repos.
+# COPR xanderlent/amd-npu-driver provides xrt + xdna-driver RPMs.
+- name: Ensure COPR xanderlent/amd-npu-driver is enabled
+  community.general.copr:
+    name: xanderlent/amd-npu-driver
+    state: enabled
+
+- name: Install XRT and XDNA packages via COPR
+  dnf:
+    name:
+      - xrt
+      - xdna-driver
+      - tcsh              # Required by XRT setup scripts
+    state: present
+
+# ─── STEP 5: Fix library symlinks (COPR install often breaks these) ──
+# The COPR package puts versioned libs in /usr/xrt/lib64 but tools
+# expect them under /usr/xrt/lib — detect and fix this automatically.
+- name: Check if XRT is installed at /usr/xrt (COPR path)
+  stat:
+    path: /usr/xrt/bin/xrt-smi
+  register: xrt_copr
+
+- name: Check XRT lib64 for actual versioned library
+  find:
+    paths: /usr/xrt/lib64
+    patterns: "libxrt_core.so.*"
+  register: xrt_core_lib
+  when: xrt_copr.stat.exists
+
+- name: Fix libxrt_core symlink (COPR symlink bug)
+  file:
+    src: "../lib64/{{ xrt_core_lib.files[0].path | basename }}"
+    dest: /usr/xrt/lib/libxrt_core.so.2
+    state: link
+    force: yes
+  when:
+    - xrt_copr.stat.exists
+    - xrt_core_lib.files | length > 0
+
+# ─── STEP 6: Deploy XRT environment profile ──────────────────────
+- name: Deploy XRT/NPU environment profile
+  copy:
+    dest: /etc/profile.d/rabble-npu.sh
+    content: |
+      # RaBbLE-OS: AMD XDNA2 NPU / XRT environment
+      # Sourced for all login shells
+
+      # XRT install location (COPR puts it here, not /opt/xilinx/xrt)
+      export XILINX_XRT=/usr/xrt
+      export XRT_PATH=/usr/xrt
+
+      # Library path — required for xrt-smi and all XRT tools to work
+      export LD_LIBRARY_PATH=/usr/xrt/lib:/usr/xrt/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+
+      # NPU device
+      export NPU_DEVICE=/dev/accel/accel0
+
+      # Convenience aliases
+      alias xrt-smi='sudo -E /usr/xrt/bin/xrt-smi'
+      alias npu-check='sudo -E /usr/xrt/bin/xrt-smi examine'
+      alias npu-status='ls -la /dev/accel/ && lsmod | grep amdxdna && ulimit -l'
+
+      # Source XRT setup.sh if it exists (sets PATH, env vars)
+      [ -f /usr/xrt/setup.sh ] && source /usr/xrt/setup.sh
+
+- name: Also source XRT in /etc/environment (for non-login shells)
+  blockinfile:
+    path: /etc/environment
+    marker: "# {mark} RaBbLE-OS XRT NPU"
+    block: |
+      XILINX_XRT=/usr/xrt
+      XRT_PATH=/usr/xrt
+
+# ─── STEP 7: FastFlowLM build dependencies (Phase 2 prep) ────────
+# FastFlowLM requires XRT to be fully working first.
+# These deps are installed now; actual FLM build is in ai-stack role.
+- name: Install FastFlowLM/XRT build dependencies
+  dnf:
+    name:
+      - boost-devel
+      - boost-static
+      - json-glib-devel
+      - libcurl-devel
+      - libuuid-devel
+      - rapidjson-devel
+      - opencl-headers
+      - OpenCL-ICD-Loader-devel
+      - pybind11-devel
+      - python3-pybind11
+      - cmake
+      - ninja-build
+      - gcc-c++
+    state: present
+
+# ─── Verification instructions ────────────────────────────────────
+- name: Print NPU verification steps
+  debug:
+    msg: |
+      ══════════════════════════════════════════════════════
+      XDNA2 NPU role complete. To fully verify:
+
+      1. REBOOT (memlock limit change requires this)
+
+      2. After reboot, open a terminal and run:
+           ulimit -l
+           # Must print: unlimited
+           # If it still shows 8192, the limits.d file isn't being read
+
+      3. Test xrt-smi:
+           source /etc/profile.d/rabble-npu.sh
+           sudo -E /usr/xrt/bin/xrt-smi examine
+
+      4. Expected output includes:
+           NPU Firmware Version: 255.x.x.x (or 1.x.x.x)
+           Device(s) Present: [0000:66:00.1] NPU Strix
+
+      TROUBLESHOOTING if still not working after reboot:
+        Check: sudo dmesg | grep -i "xrt\|xdna\|accel"
+        Check: ls -la /usr/xrt/lib/libxrt_core.so.2
+        Check: sudo -E /usr/xrt/bin/xrt-smi examine (the -E is critical)
+
+      BUILD FROM SOURCE (fallback if COPR still fails):
+        See docs/journal/XDNA2-BUILD-FROM-SOURCE.md
+      ══════════════════════════════════════════════════════

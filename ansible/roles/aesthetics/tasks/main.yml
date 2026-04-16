@@ -1,0 +1,21 @@
+---
+# ╔══════════════════════════════════════════════════════════╗
+# ║  Role: aesthetics — Boot chain theming                   ║
+# ║  GRUB → Plymouth → SDDM unified RaBbLE synthwave theme   ║
+# ╚══════════════════════════════════════════════════════════╝
+
+- name: Configure GRUB theme
+  import_tasks: grub.yml
+  tags: aesthetics-grub
+
+- name: Configure Plymouth boot splash
+  import_tasks: plymouth.yml
+  tags: aesthetics-plymouth
+
+- name: Configure SDDM login screen
+  import_tasks: sddm.yml
+  tags: aesthetics-sddm
+
+- name: Install RaBbLE font stack
+  import_tasks: fonts.yml
+  tags: aesthetics-fonts

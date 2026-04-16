@@ -1,0 +1,89 @@
+---
+# ╔══════════════════════════════════════════════════════════╗
+# ║  Role: snapper — Btrfs snapshot management               ║
+# ║                                                          ║
+# ║  VERIFIED BTRFS LAYOUT (2026-04-04):                     ║
+# ║    ID 256  path: root  (mounted at /)                    ║
+# ║    ID 257  path: home  (mounted at /home)                ║
+# ║                                                          ║
+# ║  NOTE: Fedora 43 uses 'root'/'home' not '@'/'@home'      ║
+# ╚══════════════════════════════════════════════════════════╝
+
+- name: Install snapper and snap-pac
+  dnf:
+    name:
+      - snapper
+      - python3-dnf-plugin-snapper
+    state: present
+
+# ─── Root Subvolume Config ────────────────────────────────────────
+- name: Create snapper config for root subvolume
+  command: snapper -c root create-config /
+  args:
+    creates: /etc/snapper/configs/root
+  register: snapper_root_created
+
+- name: Deploy root snapshot policy
+  template:
+    src: snapper-root.conf.j2
+    dest: /etc/snapper/configs/root
+  when: snapper_root_created is not skipped or ansible_check_mode
+
+# ─── Home Subvolume Config ────────────────────────────────────────
+- name: Create snapper config for home subvolume
+  command: snapper -c home create-config /home
+  args:
+    creates: /etc/snapper/configs/home
+
+- name: Deploy home snapshot policy
+  template:
+    src: snapper-home.conf.j2
+    dest: /etc/snapper/configs/home
+
+# ─── Enable Snapshot Timers ───────────────────────────────────────
+- name: Enable snapper timeline and cleanup timers
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+  loop:
+    - snapper-timeline.timer
+    - snapper-cleanup.timer
+
+# ─── snap-pac Configuration ──────────────────────────────────────
+- name: Configure snap-pac to snapshot before/after dnf
+  copy:
+    dest: /etc/snap-pac.ini
+    content: |
+      [root]
+      snapshot = True
+      important_packages = ["kernel*", "akmod-nvidia", "amdxdna*", "xrt"]
+
+      [home]
+      snapshot = False
+
+# ─── Initial Snapshot ─────────────────────────────────────────────
+- name: Create initial baseline snapshot
+  command: >
+    snapper -c root create
+    --type single
+    --description "RaBbLE-OS baseline: fresh Fedora 43 KDE — {{ ansible_date_time.date }}"
+  args:
+    creates: /etc/snapper/configs/.baseline-created
+  register: baseline_snap
+
+- name: Mark baseline as created
+  file:
+    path: /etc/snapper/configs/.baseline-created
+    state: touch
+  when: baseline_snap.changed
+
+- name: Report snapper status
+  debug:
+    msg: |
+      Snapper configured.
+      Commands:
+        snapper -c root list          → list all root snapshots
+        snapper -c root create --description "before X"  → manual snapshot
+        snapper -c root diff N..M     → diff between snapshots N and M
+        snapper -c root undochange N..M /path  → revert specific files

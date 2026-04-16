@@ -1,0 +1,91 @@
+---
+# ╔══════════════════════════════════════════════════════════╗
+# ║  Role: kde — KDE Plasma 6 configuration                  ║
+# ║  Kept as stable fallback and dev environment             ║
+# ╚══════════════════════════════════════════════════════════╝
+
+- name: Install KDE Plasma extras and tools
+  dnf:
+    name:
+      - plasma-discover
+      - plasma-systemmonitor
+      - kde-connect
+      - kdeconnectd
+      - dolphin
+      - konsole
+      - spectacle            # Screenshot tool
+      - kate                 # Text editor
+      - ark                  # Archive manager
+      - okular               # Document viewer
+      - gwenview             # Image viewer
+      - kcalc
+    state: present
+
+- name: Install Kitty terminal (used by both KDE and Hyprland)
+  dnf:
+    name:
+      - kitty
+    state: present
+
+- name: Deploy Kitty terminal config with synthwave theme
+  become_user: "{{ rabble_user }}"
+  file:
+    path: "{{ rabble_home }}/.config/kitty"
+    state: directory
+
+- name: Write Kitty synthwave theme config
+  become_user: "{{ rabble_user }}"
+  copy:
+    dest: "{{ rabble_home }}/.config/kitty/kitty.conf"
+    content: |
+      # RaBbLE-OS Kitty Terminal Config
+      font_family      JetBrainsMono Nerd Font
+      bold_font        JetBrainsMono Nerd Font Bold
+      italic_font      JetBrainsMono Nerd Font Italic
+      font_size        13.0
+
+      # Synthwave color palette
+      background            #0a0010
+      foreground            #e8d5ff
+      cursor                #ff2d78
+      cursor_text_color     #0a0010
+      selection_background  #bf5fff
+      selection_foreground  #0a0010
+
+      # Black
+      color0  #120025
+      color8  #2a0060
+      # Red
+      color1  #ff2d78
+      color9  #ff6699
+      # Green
+      color2  #00f5a0
+      color10 #00ffcc
+      # Yellow
+      color3  #ffcc00
+      color11 #ffe066
+      # Blue
+      color4  #5555ff
+      color12 #00f5ff
+      # Magenta
+      color5  #bf5fff
+      color13 #d480ff
+      # Cyan
+      color6  #00f5ff
+      color14 #80ffff
+      # White
+      color7  #e8d5ff
+      color15 #ffffff
+
+      # Window
+      background_opacity 0.92
+      window_padding_width 12
+      confirm_os_window_close 0
+
+      # Tabs
+      tab_bar_style powerline
+      tab_powerline_style slanted
+      active_tab_background   #ff2d78
+      active_tab_foreground   #0a0010
+      inactive_tab_background #1a0040
+      inactive_tab_foreground #8860aa

@@ -1,0 +1,8 @@
+---
+# RaBbLE-OS Ansible Inventory
+# Local machine target — Ansible runs on the machine it configures
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
+      ansible_python_interpreter: /usr/bin/python3

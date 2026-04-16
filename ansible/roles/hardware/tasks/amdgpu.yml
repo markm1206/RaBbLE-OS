@@ -1,0 +1,45 @@
+---
+# ╔══════════════════════════════════════════════════════════╗
+# ║  Hardware: AMD Radeon 890M (RDNA 3.5, gfx1150)           ║
+# ║  This GPU drives the display pipeline as primary GPU     ║
+# ╚══════════════════════════════════════════════════════════╝
+
+- name: Install Mesa Vulkan and VA-API drivers for AMD
+  dnf:
+    name:
+      - mesa-dri-drivers
+      - mesa-vulkan-drivers
+      - vulkan-loader
+      - vulkan-tools
+      - mesa-va-drivers          # VA-API hardware video decode
+      - mesa-vdpau-drivers       # VDPAU
+      - libva-utils              # vainfo — verify VA-API
+      - radeontop                # AMD GPU monitoring
+      - rocm-opencl              # OpenCL for iGPU compute tasks
+    state: present
+
+- name: Install AMD firmware package (ensures latest iGPU microcode)
+  dnf:
+    name:
+      - linux-firmware
+      - amd-gpu-firmware
+    state: present
+
+- name: Deploy AMD GPU environment profile
+  copy:
+    dest: /etc/profile.d/rabble-amdgpu.sh
+    content: |
+      # RaBbLE-OS: AMD iGPU environment
+      # Force AMD iGPU as the Vulkan default (Mesa)
+      export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.x86_64.json
+      # VA-API backend for hardware video decode
+      export LIBVA_DRIVER_NAME=radeonsi
+
+- name: Verify amdgpu module is loaded
+  command: lsmod
+  register: lsmod_output
+  changed_when: false
+
+- name: Report amdgpu status
+  debug:
+    msg: "amdgpu module: {{ 'LOADED ✅' if 'amdgpu' in lsmod_output.stdout else 'NOT FOUND ⚠️ — check dmesg' }}"

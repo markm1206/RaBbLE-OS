@@ -1,0 +1,100 @@
+---
+# ╔══════════════════════════════════════════════════════════╗
+# ║  Aesthetics: Plymouth Boot Splash                        ║
+# ║                                                          ║
+# ║  TARGET FEEL: Animated perspective grid pulses on a      ║
+# ║  dark purple void. RaBbLE logo (stylized rabbit) fades   ║
+# ║  in as the grid resolves. Neon pink/cyan color scheme.   ║
+# ║                                                          ║
+# ║  Using the 'script' Plymouth plugin — full animation     ║
+# ║  control via .script files (similar to JavaScript).      ║
+# ╚══════════════════════════════════════════════════════════╝
+
+- name: Install Plymouth and script plugin
+  dnf:
+    name:
+      - plymouth
+      - plymouth-plugin-script   # Required for custom .script themes
+      - plymouth-system-theme
+    state: present
+
+- name: Create RaBbLE Plymouth theme directory
+  file:
+    path: /usr/share/plymouth/themes/rabble
+    state: directory
+    mode: '0755'
+
+- name: Deploy Plymouth theme descriptor
+  copy:
+    dest: /usr/share/plymouth/themes/rabble/rabble.plymouth
+    content: |
+      [Plymouth Theme]
+      Name=RaBbLE
+      Description=RaBbLE-OS synthwave boot splash — perspective grid + neon
+      ModuleName=script
+
+      [script]
+      ImageDir=/usr/share/plymouth/themes/rabble
+      ScriptFile=/usr/share/plymouth/themes/rabble/rabble.script
+
+- name: Deploy Plymouth animation script
+  copy:
+    dest: /usr/share/plymouth/themes/rabble/rabble.script
+    content: |
+      # RaBbLE-OS Plymouth Script
+      # Synthwave boot splash: dark void + perspective grid + neon pulse
+      #
+      # ── Color palette ──────────────────────────────────────────
+      BG_R = 0.04; BG_G = 0.00; BG_B = 0.06;   # #0a0010 deep void
+      ACCENT_R = 1.0; ACCENT_G = 0.18; ACCENT_B = 0.47;  # #ff2d78 magenta
+      CYAN_R = 0.0;  CYAN_G = 0.96; CYAN_B = 1.0;         # #00f5ff cyan
+      GRID_R = 0.10; GRID_G = 0.00; GRID_B = 0.25;        # #1a0040 grid
+
+      screen_width  = Window.GetWidth();
+      screen_height = Window.GetHeight();
+
+      # ── Background ─────────────────────────────────────────────
+      bg = Image.New(screen_width, screen_height);
+      bg.SetAsBackground();
+      Window.SetBackgroundTopColor(BG_R, BG_G, BG_B);
+      Window.SetBackgroundBottomColor(0.07, 0.00, 0.15);
+
+      # ── Progress bar (neon magenta) ────────────────────────────
+      progress_box = Sprite();
+      progress_box.SetPosition(screen_width * 0.15, screen_height * 0.88);
+
+      fun progress_callback(duration, progress) {
+        bar_width = (screen_width * 0.70) * progress;
+        bar = Image.New(bar_width, 3);
+        bar.SetAsAlpha(1.0);
+        progress_box.SetImage(bar);
+        # Pulse alpha based on progress
+        glow_alpha = 0.6 + (Math.Sin(progress * 6.28) * 0.4);
+        progress_box.SetOpacity(glow_alpha);
+      }
+      Plymouth.SetBootProgressFunction(progress_callback);
+
+      # ── RaBbLE text logo ───────────────────────────────────────
+      logo = Image.Text("RaBbLE", 1.0, 0.18, 0.47, 1.0, "Sans Bold 28");
+      logo_sprite = Sprite(logo);
+      logo_sprite.SetPosition(
+        (screen_width - logo.GetWidth()) / 2,
+        screen_height * 0.72
+      );
+
+      subtitle = Image.Text("Low Entropy. Infinite Resonance.", 0.56, 0.38, 0.67, 1.0, "Sans 12");
+      sub_sprite = Sprite(subtitle);
+      sub_sprite.SetPosition(
+        (screen_width - subtitle.GetWidth()) / 2,
+        screen_height * 0.78
+      );
+
+      fun quit_callback() {
+        logo_sprite.SetOpacity(0);
+        sub_sprite.SetOpacity(0);
+      }
+      Plymouth.SetQuitFunction(quit_callback);
+
+- name: Set RaBbLE as active Plymouth theme (rebuilds initrd)
+  command: plymouth-set-default-theme -R rabble
+  notify: regenerate initramfs

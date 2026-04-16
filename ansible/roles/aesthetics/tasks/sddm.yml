@@ -1,0 +1,220 @@
+---
+# ╔══════════════════════════════════════════════════════════╗
+# ║  Aesthetics: SDDM Login Screen                           ║
+# ║                                                          ║
+# ║  THEME STATUS:                                           ║
+# ║    Active:  breeze (stable fallback — works on Qt6)      ║
+# ║    WIP:     rabble custom theme (files deployed but      ║
+# ║             Main.qml needs Qt6/SDDM API fixes)           ║
+# ║                                                          ║
+# ║  To switch to custom theme when ready:                   ║
+# ║    Edit /etc/sddm.conf.d/30-theme.conf → Current=rabble  ║
+# ╚══════════════════════════════════════════════════════════╝
+
+- name: Install SDDM and Qt6 Wayland backend
+  dnf:
+    name:
+      - sddm
+      - qt6-qtwayland
+      - qt6-qtsvg
+      - qt6-qtvirtualkeyboard
+    state: present
+
+- name: Configure SDDM to run on Wayland
+  copy:
+    dest: /etc/sddm.conf.d/10-wayland.conf
+    content: |
+      [General]
+      DisplayServer=wayland
+      GreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell
+
+      [Wayland]
+      CompositorCommand=kwin_wayland --no-global-shortcuts
+
+- name: Fix SDDM UTF-8 locale
+  copy:
+    dest: /etc/sddm.conf.d/20-locale.conf
+    content: |
+      [General]
+      Lang={{ system_locale }}
+
+# ── Deploy RaBbLE custom theme files (WIP — not yet active) ───────
+# These files are staged for when Main.qml is fixed for Qt6/SDDM API.
+
+- name: Create RaBbLE SDDM theme directory
+  file:
+    path: /usr/share/sddm/themes/rabble
+    state: directory
+    mode: '0755'
+
+- name: Deploy SDDM theme metadata
+  copy:
+    dest: /usr/share/sddm/themes/rabble/metadata.desktop
+    content: |
+      [SddmGreeterTheme]
+      Name=RaBbLE
+      Description=RaBbLE-OS Synthwave Login — Outrun horizon, neon grid
+      Author=RaBbLE-OS
+      License=GPL-3.0
+      Type=sddm-theme
+      Version=0.1.0
+      Website=https://github.com/markm1206/RaBbLE-OS
+      MainScript=Main.qml
+
+- name: Deploy SDDM theme config
+  copy:
+    dest: /usr/share/sddm/themes/rabble/theme.conf
+    content: |
+      [General]
+      background=background.png
+      blurRadius=0
+      AccentColor=#ff2d78
+      BackgroundColor=#0a0010
+      FontFamily=JetBrains Mono
+      FontSize=14
+
+- name: Deploy RaBbLE SDDM Main.qml (WIP — not yet active)
+  copy:
+    dest: /usr/share/sddm/themes/rabble/Main.qml
+    content: |
+      // RaBbLE-OS SDDM Theme — Main.qml
+      // STATUS: Work in progress — breeze is the active theme.
+      // KNOWN ISSUES:
+      //   - SddmComponents 2.0 import path differs between SDDM Qt5/Qt6 builds.
+      //   - Test by running: sddm-greeter-qt6 --test-mode --theme /usr/share/sddm/themes/rabble
+      //   - Once passing test-mode, switch Current=rabble in 30-theme.conf.
+      import QtQuick 2.15
+      import QtQuick.Controls 2.15
+      import QtQuick.Layouts 1.15
+      import SddmComponents 2.0
+
+      Rectangle {
+          id: root
+          width: Screen.width
+          height: Screen.height
+          color: "#0a0010"
+
+          Rectangle {
+              anchors.fill: parent
+              gradient: Gradient {
+                  GradientStop { position: 0.0; color: "#0a0010" }
+                  GradientStop { position: 0.55; color: "#120025" }
+                  GradientStop { position: 1.0; color: "#1a0040" }
+              }
+          }
+
+          Rectangle {
+              width: parent.width * 1.4
+              height: 2
+              color: "#ff2d78"
+              anchors.horizontalCenter: parent.horizontalCenter
+              y: parent.height * 0.62
+              opacity: 0.85
+          }
+
+          Text {
+              text: "RaBbLE"
+              font.family: "JetBrains Mono"
+              font.pixelSize: 52
+              font.bold: true
+              color: "#ff2d78"
+              anchors.horizontalCenter: parent.horizontalCenter
+              y: parent.height * 0.25
+          }
+
+          Text {
+              text: "Low Entropy. Infinite Resonance."
+              font.family: "JetBrains Mono"
+              font.pixelSize: 13
+              color: "#bf5fff"
+              anchors.horizontalCenter: parent.horizontalCenter
+              y: parent.height * 0.34
+          }
+
+          Column {
+              anchors.horizontalCenter: parent.horizontalCenter
+              y: parent.height * 0.68
+              spacing: 14
+              width: 320
+
+              TextField {
+                  id: userField
+                  width: parent.width
+                  placeholderText: "username"
+                  text: userModel.lastUser
+                  font.family: "JetBrains Mono"; font.pixelSize: 14
+                  color: "#e8d5ff"
+                  background: Rectangle { color: "#1a0040"; border.color: "#ff2d78"; border.width: 1; radius: 3 }
+                  padding: 10
+              }
+
+              TextField {
+                  id: passField
+                  width: parent.width
+                  placeholderText: "password"
+                  echoMode: TextInput.Password
+                  font.family: "JetBrains Mono"; font.pixelSize: 14
+                  color: "#e8d5ff"
+                  background: Rectangle { color: "#1a0040"; border.color: "#00f5ff"; border.width: 1; radius: 3 }
+                  padding: 10
+                  Keys.onReturnPressed: loginButton.clicked()
+              }
+
+              Button {
+                  id: loginButton
+                  width: parent.width
+                  text: "ENTER"
+                  font.family: "JetBrains Mono"; font.pixelSize: 14; font.bold: true
+                  contentItem: Text {
+                      text: parent.text; color: "#0a0010"; font: parent.font
+                      horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+                  }
+                  background: Rectangle { color: loginButton.pressed ? "#cc2460" : "#ff2d78"; radius: 3 }
+                  onClicked: sddm.login(userField.text, passField.text, sessionCombo.currentIndex)
+              }
+          }
+
+          ComboBox {
+              id: sessionCombo
+              width: 180
+              anchors.bottom: parent.bottom; anchors.right: parent.right; anchors.margins: 20
+              model: sessionModel
+              textRole: "name"
+              currentIndex: sessionModel.lastIndex
+              font.family: "JetBrains Mono"; font.pixelSize: 11
+              contentItem: Text {
+                  text: parent.displayText; color: "#8860aa"; font: parent.font
+                  verticalAlignment: Text.AlignVCenter; leftPadding: 8
+              }
+              background: Rectangle { color: "#120025"; border.color: "#2a0060"; radius: 2 }
+          }
+
+          Text {
+              id: clock
+              anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 24
+              color: "#8860aa"
+              font.family: "JetBrains Mono"; font.pixelSize: 12
+              function updateTime() { text = Qt.formatDateTime(new Date(), "hh:mm — ddd dd MMM") }
+              Component.onCompleted: updateTime()
+              Timer { interval: 10000; running: true; repeat: true; onTriggered: clock.updateTime() }
+          }
+      }
+
+# ── Active theme: breeze (stable fallback) ─────────────────────────
+# Switch to Current=rabble after testing with sddm-greeter-qt6 --test-mode
+- name: Set SDDM active theme to breeze (stable fallback)
+  copy:
+    dest: /etc/sddm.conf.d/30-theme.conf
+    content: |
+      # RaBbLE-OS SDDM theme config
+      # Active: breeze (stable fallback while custom theme is developed)
+      # To test custom theme: sddm-greeter-qt6 --test-mode --theme /usr/share/sddm/themes/rabble
+      # To activate: change Current=breeze to Current=rabble
+      [Theme]
+      Current=breeze
+
+- name: Enable and start SDDM
+  systemd:
+    name: sddm
+    enabled: yes
+    state: started

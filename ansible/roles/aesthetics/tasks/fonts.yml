@@ -1,0 +1,44 @@
+---
+# ╔══════════════════════════════════════════════════════════╗
+# ║  Aesthetics: RaBbLE Font Stack                           ║
+# ╚══════════════════════════════════════════════════════════╝
+
+- name: Install display and UI fonts
+  dnf:
+    name:
+      - jetbrains-mono-fonts        # Primary monospace — terminal, code, UI
+      - fira-code-fonts    # Secondary monospace
+      - google-noto-fonts-common
+      - google-noto-emoji-fonts
+      - fontawesome-fonts           # Icon font for Quickshell bar
+    state: present
+
+- name: Install Cascadia Code (fallback nerd font)
+  dnf:
+    name: cascadia-code-fonts
+    state: present
+  ignore_errors: yes
+
+- name: Download JetBrainsMono Nerd Font (patched — required for Quickshell icons)
+  become_user: "{{ rabble_user }}"
+  block:
+    - name: Create local font directory
+      file:
+        path: "{{ rabble_home }}/.local/share/fonts/NerdFonts"
+        state: directory
+
+    - name: Download JetBrainsMono Nerd Font zip
+      get_url:
+        url: "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip"
+        dest: "/tmp/JetBrainsMono.zip"
+        timeout: 60
+
+    - name: Unzip Nerd Font
+      unarchive:
+        src: /tmp/JetBrainsMono.zip
+        dest: "{{ rabble_home }}/.local/share/fonts/NerdFonts/"
+        remote_src: yes
+
+    - name: Rebuild font cache
+      command: fc-cache -fv
+      changed_when: false

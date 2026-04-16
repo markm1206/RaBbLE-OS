@@ -1,0 +1,6 @@
+---
+- name: regenerate grub
+  command: grub2-mkconfig -o /boot/grub2/grub.cfg
+
+- name: regenerate initramfs
+  command: dracut --force --regenerate-all

@@ -1,0 +1,123 @@
+---
+# ╔══════════════════════════════════════════════════════════╗
+# ║  Role: hyprland — Primary RaBbLE desktop                 ║
+# ║  Hyprland + Quickshell + synthwave identity              ║
+# ║                                                          ║
+# ║  DOTFILE STRATEGY:                                       ║
+# ║  All configs live in dotfiles/hypr/ (static files).      ║
+# ║  Ansible symlinks them into ~/.config/hypr/.             ║
+# ║  Edit dotfiles/hypr/*.conf — never ~/.config/hypr/.      ║
+# ╚══════════════════════════════════════════════════════════╝
+
+- name: Enable Hyprland COPR (solopasha/hyprland)
+  community.general.copr:
+    name: solopasha/hyprland
+    state: enabled
+
+- name: Install Hyprland and core Wayland stack
+  dnf:
+    name:
+      - hyprland
+      - hyprpaper
+      - hypridle
+      - hyprlock
+      - xdg-desktop-portal-hyprland
+      - xdg-desktop-portal-gtk
+      - waybar
+      - wofi
+      - mako
+      - wl-clipboard
+      - grim
+      - slurp
+      - swayimg
+      - qt6-qtwayland
+      - qt6-qtsvg
+      - polkit-kde-agent-1
+      - xorg-x11-server-Xwayland
+      - kitty
+      - brightnessctl
+      - playerctl
+    state: present
+
+- name: Install Quickshell build dependencies (for Phase 0.5)
+  dnf:
+    name:
+      - cmake
+      - ninja-build
+      - qt6-qtdeclarative-devel
+      - qt6-qtbase-devel
+      - qt6-qtwayland-devel
+      - wayland-devel
+      - wayland-protocols-devel
+      - pipewire-devel
+      - pulseaudio-libs-devel
+    state: present
+
+- name: Add user to video group (required for brightnessctl)
+  user:
+    name: "{{ rabble_user }}"
+    groups: video
+    append: yes
+
+- name: Create ~/.config/hypr directory
+  become_user: "{{ rabble_user }}"
+  file:
+    path: "{{ rabble_home }}/.config/hypr"
+    state: directory
+    mode: '0755'
+
+- name: Create ~/.config/hypr/wallpapers directory
+  become_user: "{{ rabble_user }}"
+  file:
+    path: "{{ rabble_home }}/.config/hypr/wallpapers"
+    state: directory
+    mode: '0755'
+
+- name: Create ~/.config/quickshell directory
+  file:
+    path: "{{ rabble_home }}/.config/quickshell"
+    state: directory
+    owner: "{{ rabble_user }}"
+    group: "{{ rabble_user }}"
+    mode: '0755'
+
+# Symlink hypr dotfiles from repo → ~/.config/hypr/
+- name: Symlink Hyprland dotfiles
+  become_user: "{{ rabble_user }}"
+  file:
+    src: "{{ rabble_repo }}/dotfiles/hypr/{{ item }}"
+    dest: "{{ rabble_home }}/.config/hypr/{{ item }}"
+    state: link
+    force: yes
+  loop:
+    - hyprland.conf
+    - hyprpaper.conf
+    - hypridle.conf
+    - hyprlock.conf
+
+- name: Symlink Quickshell config
+  become_user: "{{ rabble_user }}"
+  file:
+    src: "{{ rabble_repo }}/dotfiles/quickshell/shell.qml"
+    dest: "{{ rabble_home }}/.config/quickshell/shell.qml"
+    state: link
+    force: yes
+
+- name: Install Hyprland Wayland session entry for SDDM
+  copy:
+    dest: /usr/share/wayland-sessions/hyprland.desktop
+    content: |
+      [Desktop Entry]
+      Name=Hyprland (RaBbLE)
+      Comment=RaBbLE-OS agentic desktop — Hyprland compositor
+      Exec=Hyprland
+      Type=Application
+      DesktopNames=Hyprland
+
+- name: Report Hyprland setup
+  debug:
+    msg: |
+      Hyprland installed. Dotfiles symlinked from:
+        {{ rabble_repo }}/dotfiles/hypr/
+        {{ rabble_repo }}/dotfiles/quickshell/
+      Edit files there — ~/.config/hypr/ holds symlinks only.

@@ -1,0 +1,195 @@
+---
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  Hardware: ASUS Platform Stack                               ║
+# ║  asusctl  — fan curves, battery limit, keyboard backlight    ║
+# ║  supergfxctl — GPU mode switching (Integrated/Hybrid/etc.)   ║
+# ║                                                              ║
+# ║  POWER MANAGEMENT NOTES:                                     ║
+# ║    tuned / tuned-ppd: REMOVED — conflicts with asusd         ║
+# ║    power-profiles-daemon (PPD): ACTIVE — managed by asusd    ║
+# ║    asusctl profiles map to PPD: Quiet→power-saver,           ║
+# ║      Balanced→balanced, Performance→performance              ║
+# ║                                                              ║
+# ║  SLEEP NOTES:                                                ║
+# ║    AMD Strix Point requires s2idle (S0ix), not S3 deep.      ║
+# ║    mem_sleep_default=s2idle is set in GRUB cmdline.          ║
+# ║    NVIDIA VRAM preservation requires the nvidia-suspend       ║
+# ║    systemd service (shipped with akmod-nvidia).               ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+- name: Remove tuned-ppd (conflicts with asusd platform profile control)
+  dnf:
+    name:
+      - tuned-ppd
+      - tuned
+    state: absent
+  ignore_errors: yes   # OK if not installed
+
+- name: Enable asus-linux COPR repository
+  community.general.copr:
+    name: lukenukem/asus-linux
+    state: enabled
+
+- name: Install ASUS control stack
+  dnf:
+    name:
+      - asusctl
+      - supergfxctl
+      - power-profiles-daemon
+      - asusctl-rog-gui
+    state: present
+
+- name: Enable and start power-profiles-daemon
+  systemd:
+    name: power-profiles-daemon
+    enabled: yes
+    state: started
+
+- name: Enable and start asusd daemon
+  systemd:
+    name: asusd
+    enabled: yes
+    state: started
+
+- name: Enable and start supergfxd daemon
+  systemd:
+    name: supergfxd
+    enabled: yes
+    state: started
+
+- name: Set GPU mode to Hybrid (iGPU displays, NVIDIA available for PRIME offload)
+  command: supergfxctl --mode Hybrid
+  changed_when: false
+  ignore_errors: yes
+  # Requires logout/reboot to fully apply
+
+# ── asusd configuration ────────────────────────────────────────────
+# Configures battery charge limit (80% recommended for longevity),
+# disables nvidia-powerd (we manage NVIDIA via akmod-nvidia services),
+# and sets sane platform profile defaults per power state.
+- name: Deploy asusd main config
+  copy:
+    dest: /etc/asusd/asusd.ron
+    content: |
+      // RaBbLE-OS asusd configuration
+      // Format: Rusty Object Notation (RON)
+      (
+          charge_control_end_threshold: 80,
+          panel_od: false,
+          mini_led_mode: false,
+          // Let akmod-nvidia services handle NVIDIA power — disable asusd interference
+          disable_nvidia_powerd_on_battery: true,
+          // Shell commands to run on AC/battery transitions (empty = use platform profiles)
+          ac_command: "",
+          bat_command: "",
+          // Platform profiles mapped to PPD profiles:
+          //   Quiet       = power-saver
+          //   Balanced    = balanced
+          //   Performance = performance
+          platform_profile_on_battery: Quiet,
+          platform_profile_on_ac: Balanced,
+      )
+  notify: restart asusd
+
+# ── Sleep / Suspend fixes ──────────────────────────────────────────
+
+# logind: configure lid/suspend behavior
+- name: Ensure logind.conf.d directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/systemd/logind.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deploy logind sleep config
+  copy:
+    dest: /etc/systemd/logind.conf.d/99-rabble-sleep.conf
+    content: |
+      # RaBbLE-OS: Lid/sleep behavior
+      # s2idle (S0ix) is set via mem_sleep_default=s2idle in GRUB cmdline.
+      [Login]
+      HandleSuspendKey=suspend
+      HandleHibernateKey=ignore
+      HandleLidSwitch=suspend
+      HandleLidSwitchExternalPower=ignore
+      HandleLidSwitchDocked=ignore
+      # Delay between lid close and suspend (seconds) — gives GPU time to settle
+      HoldoffTimeoutSec=5
+  notify: reload systemd
+
+- name: Configure logind for KDE/Wayland stability
+  copy:
+    dest: /etc/systemd/logind.conf.d/88-kde-sleep-fix.conf
+    content: |
+      [Login]
+      # Give KWin/Wayland more time to lock before the kernel suspends
+      InhibitDelayMaxSec=10
+      # Ensure lid close always triggers suspend despite KDE settings
+      HandleLidSwitch=suspend
+      HandleLidSwitchExternalPower=suspend
+
+# ACPI wakeup: disable XHC (USB) wakeup which can prevent deep s2idle
+- name: Deploy systemd-sleep hook to manage ACPI wakeup sources
+  copy:
+    dest: /usr/lib/systemd/system-sleep/99-rabble-wakeup.sh
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      # RaBbLE-OS: Manage ACPI wakeup sources around sleep
+      # XHC0/XHC1 (USB controllers) can spuriously wake the system from s2idle.
+      # Disable on suspend, re-enable on resume if desired.
+      case "$1" in
+          pre)
+              # Disable USB wakeup before suspend
+              for dev in XHC0 XHC1 XHCI; do
+                  if grep -qw "$dev" /proc/acpi/wakeup 2>/dev/null; then
+                      # Only disable if currently enabled
+                      if grep -w "$dev" /proc/acpi/wakeup | grep -q "enabled"; then
+                          echo "$dev" > /proc/acpi/wakeup
+                      fi
+                  fi
+              done
+              ;;
+          post)
+              # Re-enable USB wakeup after resume (optional — comment out to keep disabled)
+              # for dev in XHC0 XHC1 XHCI; do
+              #     echo "$dev" > /proc/acpi/wakeup
+              # done
+              ;;
+      esac
+
+# ── ASUS udev rules ────────────────────────────────────────────────
+- name: Deploy asusctl udev rules
+  copy:
+    dest: /etc/udev/rules.d/99-asusd.rules
+    content: |
+      # RaBbLE-OS: ASUS device access for userspace tools
+      KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0b05", TAG+="uaccess"
+  notify: 
+    - reload udev
+    - trigger udev
+
+- name: Add user to input group (ASUS keyboard backlight control)
+  user:
+    name: "{{ rabble_user }}"
+    groups: input
+    append: yes
+
+- name: Report ASUS stack status
+  debug:
+    msg: |
+      ASUS control stack installed and configured.
+
+      Key commands:
+        asusctl profile -l            → list power profiles
+        asusctl profile -n            → cycle to next profile
+        asusctl -c 80                 → set battery charge limit to 80%
+        supergfxctl --status          → current GPU mode
+        supergfxctl --mode Hybrid     → switch to Hybrid (requires reboot)
+
+      Sleep troubleshooting:
+        cat /sys/power/mem_sleep      → should show [s2idle]
+        journalctl -b -u systemd-suspend  → suspend logs
+        systemctl status nvidia-suspend   → NVIDIA suspend service

@@ -1,0 +1,107 @@
+---
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║  RaBbLE-OS — Global Variables (all.yml)                          ║
+# ║  Single source of truth for hardware and system config           ║
+# ║  Updated: 2026-04-04                                             ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+# ─── User ─────────────────────────────────────────────────────────
+rabble_user: "rabble"
+rabble_home: "/home/rabble"
+rabble_repo: "{{ rabble_home }}/RaBbLE-OS"
+rabble_version: "0.1.0"
+
+# ─── Hardware Profile: ASUS ProArt P16 H7606WV ────────────────────
+# Verified via: lspci, dmesg, lsmod — 2026-04-04
+hardware:
+  platform: "asus_laptop"
+  product: "ProArt P16 H7606WV"
+  cpu: "AMD Ryzen AI 9 HX 370 (Strix Point, 24 threads)"
+  cpu_vendor: "amd"
+
+  # iGPU: AMD Radeon 890M — drives the display, primary compositor GPU
+  igpu: "amd_890m"
+  igpu_pci: "65:00.0"
+
+  # dGPU: NVIDIA RTX 4060 Max-Q Mobile — Optimus offload only
+  # NOTE: This is NOT a desktop discrete GPU — it uses Optimus/PRIME
+  # The iGPU (890M) drives the display; 4060 is available via DRI_PRIME=1
+  dgpu: "nvidia_rtx4060_mobile"
+  dgpu_pci: "64:00.0"
+  dgpu_vram_gb: 8
+
+  # NPU: AMD XDNA2 (Strix Point built-in)
+  # Verified: /dev/accel/accel0 present, amdxdna 0.6.0 loaded at kernel init
+  npu: "amd_xdna2"
+  npu_pci: "66:00.1"
+  npu_device: "/dev/accel/accel0"
+
+  # WARNING: nouveau (open NVIDIA driver) is ACTIVE by default on fresh Fedora.
+  # It MUST be blacklisted before akmod-nvidia will work correctly.
+  # The hardware/nvidia role handles this.
+  # Set to false after first successful NVIDIA install + reboot
+  nouveau_loaded: false
+
+  # GPU operating mode (managed by supergfxctl)
+  # Options: Integrated | Hybrid | Dedicated | Compute
+  # Hybrid = 890M drives display, 4060 available for offload — recommended
+  gpu_mode: "Hybrid"
+
+  # RAM
+  ram_gb: 32
+
+  # Btrfs subvolume names (verified via: btrfs subvolume list /)
+  # NOTE: Fedora 43 default uses 'root' and 'home', NOT '@' and '@home'
+  btrfs_root_subvol: "root"
+  btrfs_home_subvol: "home"
+
+# ─── NVIDIA Driver Flags ──────────────────────────────────────────
+nvidia:
+  # DRM modeset required for Wayland + NVIDIA
+  modeset: true
+  # fbdev required for console framebuffer (Plymouth, TTY)
+  fbdev: true
+  # Preserve VRAM allocations across suspend/resume
+  preserve_vram: true
+  # Enable GBM backend (required for Wayland compositors)
+  use_gbm: true
+
+# ─── AI / NPU Stack ──────────────────────────────────────────────
+# PHASE GATING: Set 'phase' to control what gets built
+#   0 = install deps only (safe, no long builds)
+#   1 = build llama.cpp with CUDA (requires working NVIDIA driver)
+#   2 = install vLLM + build FastFlowLM (requires working XRT/NPU)
+ai_stack:
+  phase: 0               # ← CHANGE THIS to advance build stage
+
+  # Inference engines
+  llama_cpp_cuda: true   # llama.cpp with RTX 4060 CUDA backend
+  vllm: true             # vLLM OpenAI-compatible server
+  fastflowlm: true       # FastFlowLM NPU inference (requires XRT working)
+
+  # Stack decisions (formerly in this section, now moved):
+  # - ollama: replaced by llama.cpp + vLLM (more control, no extra daemon)
+  # - xrt_npu: moved to hardware/npu_xdna2 role (hardware concern, not AI)
+  # - onnxruntime_vitisai: FastFlowLM handles the NPU inference path
+  # - rocm: NOT needed — Mesa handles iGPU compute; CUDA handles dGPU
+  # - python ai venv: removed per project decision
+
+  # Build control
+  force_rebuild: false   # Set true to force rebuild even if already built
+
+# ─── Desktop Environment ─────────────────────────────────────────
+desktop:
+  kde: true             # Keep KDE — stable fallback, good for dev tasks
+  hyprland: true        # Primary RaBbLE desktop — synthwave identity layer
+  quickshell: true      # Hyprland status bar / HUD
+  sddm: true            # Display manager (already installed + running)
+  # Aesthetic theme tokens
+  theme: "rabble-synthwave"
+  theme_accent1: "#ff2d78"   # Hot magenta
+  theme_accent2: "#00f5ff"   # Electric cyan
+  theme_accent3: "#bf5fff"   # Soft violet
+  theme_bg: "#0a0010"        # Near-black purple void
+
+# ─── Locale Fix ──────────────────────────────────────────────────
+# SDDM showed locale "C" warning — set system UTF-8 locale
+system_locale: "en_US.UTF-8"

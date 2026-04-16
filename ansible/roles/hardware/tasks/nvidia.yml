@@ -1,0 +1,137 @@
+---
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║  Hardware: NVIDIA RTX 4060 Max-Q Mobile (Optimus/PRIME offload)  ║
+# ║                                                                  ║
+# ║  ARCHITECTURE NOTE:                                              ║
+# ║  This is a laptop MUX setup — the RTX 4060 does NOT drive the   ║
+# ║  display in Hybrid mode. The AMD 890M drives Wayland/KMS.        ║
+# ║  NVIDIA is used via DRI_PRIME=1 for GPU-intensive workloads      ║
+# ║  (LLM inference, rendering, CUDA compute).                       ║
+# ║                                                                  ║
+# ║  CRITICAL: nouveau is loaded by default on Fedora 43.            ║
+# ║  It MUST be blacklisted before akmod-nvidia installation.        ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+# ─── Step 1: Blacklist nouveau ────────────────────────────────────
+- name: Blacklist nouveau kernel module
+  copy:
+    dest: /etc/modprobe.d/blacklist-nouveau.conf
+    content: |
+      # RaBbLE-OS: Blacklist nouveau to allow akmod-nvidia
+      # nouveau conflicts with the proprietary NVIDIA driver
+      blacklist nouveau
+      options nouveau modeset=0
+  notify: regenerate initramfs
+
+- name: Check if nouveau is currently loaded
+  command: lsmod
+  register: lsmod_check
+  changed_when: false
+
+- name: Warn if nouveau is still active (requires reboot after initramfs rebuild)
+  debug:
+    msg: |
+      ⚠️  nouveau is currently loaded in RAM.
+      The blacklist takes effect after initramfs rebuild + reboot.
+      This playbook will rebuild initramfs — then REBOOT before next run.
+  when: "'nouveau' in lsmod_check.stdout"
+
+# ─── Step 2: NVIDIA Driver Installation ──────────────────────────
+- name: Install akmod-nvidia (auto-rebuilds on kernel updates)
+  dnf:
+    name:
+      - akmod-nvidia              # Kernel module (auto-rebuilds with kmod)
+      - xorg-x11-drv-nvidia       # Xorg driver (still needed even on Wayland)
+      - xorg-x11-drv-nvidia-cuda  # CUDA support
+      - xorg-x11-drv-nvidia-cuda-libs
+      - libva-nvidia-driver  # The current Fedora 43 naming convention for Vid Accel
+      - libva-utils
+    state: present
+  notify: wait for akmod build
+
+- name: Install CUDA toolkit for ML/AI workloads
+  dnf:
+    name:
+      - nvidia-driver-cuda             # Ensures the runtime is pinned
+    state: present
+  ignore_errors: yes   # cuda-toolkit may need the NVIDIA CUDA repo separately
+
+# ─── Step 3: NVIDIA Wayland Configuration ────────────────────────
+- name: Deploy NVIDIA modprobe config (Wayland + s2idle fix)
+  copy:
+    dest: /etc/modprobe.d/nvidia-rabble.conf
+    content: |
+      # RaBbLE-OS NVIDIA configuration
+      # Required for Wayland compositors (Hyprland, KWin)
+      options nvidia-drm modeset=1 fbdev=1
+      
+      # S0ix/s2idle specific fixes for Strix Point
+      options nvidia NVreg_EnableS0ixPowerManagement=1
+      # Preserve VRAM allocations across suspend — critical for laptop
+      options nvidia NVreg_PreserveVideoMemoryAllocations=1
+      options nvidia NVreg_TemporaryFilePath=/var/tmp
+      
+      # Enable GSP firmware for 40-series power management
+      options nvidia NVreg_EnableGpuFirmware=1
+      options nvidia NVreg_UsePageAttributeTable=1
+  notify: regenerate initramfs
+
+- name: Create NVIDIA power management service override directory
+  file:
+    path: /etc/systemd/system/nvidia-suspend.service.d
+    state: directory
+
+- name: Deploy NVIDIA suspend service override
+  copy:
+    dest: /etc/systemd/system/nvidia-suspend.service.d/override.conf
+    content: |
+      [Unit]
+      After=systemd-suspend.service
+  notify: reload systemd
+
+- name: Enable NVIDIA power management services (suspend/resume)
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+  loop:
+    - nvidia-hibernate.service
+    - nvidia-suspend.service
+    - nvidia-resume.service
+  ignore_errors: yes  # Services only exist after akmod build completes
+
+# ─── Step 4: PRIME Offload Environment ───────────────────────────
+- name: Deploy PRIME offload helper script
+  copy:
+    dest: /usr/local/bin/rabble-gpu
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      # RaBbLE-OS: Run a command on the NVIDIA RTX 4060 via PRIME offload
+      # Usage: rabble-gpu <command> [args...]
+      # Example: rabble-gpu ollama serve
+      #          rabble-gpu glxinfo | grep renderer
+      export DRI_PRIME=pci-0000_64_00_0
+      export __NV_PRIME_RENDER_OFFLOAD=1
+      export __NV_PRIME_RENDER_OFFLOAD_PROVIDER=NVIDIA-G0
+      export __GLX_VENDOR_LIBRARY_NAME=nvidia
+      export __VK_LAYER_NV_optimus=NVIDIA_only
+      exec "$@"
+
+- name: Deploy NVIDIA environment profile
+  copy:
+    dest: /etc/profile.d/rabble-nvidia.sh
+    content: |
+      # RaBbLE-OS: NVIDIA PRIME environment
+      # Use 'rabble-gpu <command>' to run on RTX 4060
+      # AMD 890M is the default renderer for all desktop apps
+      export CUDA_VISIBLE_DEVICES=0
+
+- name: Report NVIDIA installation status
+  debug:
+    msg: |
+      NVIDIA role complete.
+      Next steps:
+        1. Reboot to unload nouveau and load nvidia
+        2. Verify: lsmod | grep nvidia
+        3. Test PRIME: rabble-gpu glxinfo | grep renderer
+        4. Test CUDA: nvidia-smi
