@@ -1,0 +1,117 @@
+---
+# =============================================================================
+# RaBbLE — Master Playbook (site.yml)
+# =============================================================================
+# Run via bootstrap.sh, or directly:
+#   ansible-playbook -i ansible/inventory/hosts.yml ansible/site.yml -K
+#
+# Layer order: core → hardware → boot → snapper → ui_ux
+#
+# Per-layer:
+#   ansible-playbook ... --tags core
+#   ansible-playbook ... --tags boot
+#   ansible-playbook ... --tags grub
+#   ansible-playbook ... --tags plymouth
+#   ansible-playbook ... --tags sddm
+#   ansible-playbook ... --tags hardware
+#   ansible-playbook ... --tags snapper
+#   ansible-playbook ... --tags ui_ux
+#
+# Dry run:    ansible-playbook ... --check --diff
+# Skip heavy: ansible-playbook ... --skip-tags nvidia,npu
+# =============================================================================
+
+- name: RaBbLE — Full System Configuration
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Print run info
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════╗
+          ║          RaBbLE Ansible Run              ║
+          ║  Host:   {{ inventory_hostname }}
+          ║  Kernel: {{ ansible_kernel }}
+          ║  Distro: {{ ansible_distribution }} {{ ansible_distribution_major_version }}
+          ╚══════════════════════════════════════════╝
+      tags: always
+
+    - name: Pre-run Snapper snapshot (if snapper is configured)
+      ansible.builtin.command: >
+        snapper -c root create
+        --type single
+        --description "pre-ansible-{{ ansible_date_time.iso8601 }}"
+      ignore_errors: true
+      tags: always
+
+  roles:
+    # ── Core / base system ──────────────────────────────────────────────────
+    - role: core
+      tags: [core]
+
+    # ── Hardware — ASUS ProArt P16 ──────────────────────────────────────────
+    - role: hardware/x64/asus_proart_p16
+      tags: [hardware, asus_proart_p16]
+      when: "'asus_proart_p16' in group_names"
+
+    # ── Boot chain ──────────────────────────────────────────────────────────
+    - role: boot/grub2
+      tags: [boot, grub]
+
+    - role: boot/plymouth
+      tags: [boot, plymouth]
+
+    - role: boot/session_manager
+      tags: [boot, sddm, session]
+
+    # ── Snapshot management ─────────────────────────────────────────────────
+    - role: snapper
+      tags: [snapper]
+
+    # ── UI / UX ─────────────────────────────────────────────────────────────
+    - role: ui_ux/hyprland
+      tags: [ui_ux, hyprland]
+      become: false
+
+    - role: ui_ux/quickshell
+      tags: [ui_ux, quickshell]
+      become: false
+
+    - role: ui_ux/terminal
+      tags: [ui_ux, terminal]
+      become: false
+
+    - role: ui_ux/shell/zsh
+      tags: [ui_ux, shell, zsh]
+      become: false
+
+    - role: ui_ux/shell/bash
+      tags: [ui_ux, shell, bash]
+      become: false
+
+  post_tasks:
+    - name: Post-run Snapper snapshot
+      ansible.builtin.command: >
+        snapper -c root create
+        --type single
+        --description "post-ansible-{{ ansible_date_time.iso8601 }}"
+      ignore_errors: true
+      tags: always
+
+    - name: Run complete
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════╗
+          ║  RaBbLE configuration complete.                      ║
+          ║  Review CHANGED items above.                         ║
+          ║  Reboot recommended after first run.                 ║
+          ║                                                      ║
+          ║  Boot check sequence after reboot:                   ║
+          ║    1. GRUB menu — themed, readable at 1280x800       ║
+          ║    2. Plymouth splash — RaBbLE synthwave animation    ║
+          ║    3. SDDM — breeze (stable) or rabble (if enabled)  ║
+          ║    4. TTY (Ctrl+Alt+F2) — terminus font, readable    ║
+          ╚══════════════════════════════════════════════════════╝
+      tags: always

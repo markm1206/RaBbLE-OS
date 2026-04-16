@@ -1,0 +1,205 @@
+---
+# ansible/roles/hardware/x64/asus_proart_p16/tasks/npu.yml
+# =============================================================================
+# AMD XDNA2 NPU (Strix Point) — Fedora 43 userspace stack
+#
+# Sourced almost entirely from BaBbLE's npu_xdna2.yml which has verified,
+# working research for this exact chip (HX 370 / 0000:66:00.1).
+#
+# KEY FIXES from BaBbLE (these were missing from RaBbLE):
+#   1. memlock limits — without this xrt-smi runs but sees nothing
+#   2. COPR xanderlent/amd-npu-driver — no native Fedora package exists
+#   3. XRT symlink repair — COPR install often has broken lib64 symlinks
+#   4. LD_LIBRARY_PATH in profile.d — required for all XRT tools to function
+#   5. /etc/environment block for non-login shells
+#
+# VERIFIED HARDWARE: /dev/accel/accel0, amdxdna 0.6.0, kernel 6.19
+# =============================================================================
+
+# ── Step 1: Verify kernel side is working ─────────────────────────────────────
+- name: Confirm NPU device node exists
+  ansible.builtin.stat:
+    path: /dev/accel/accel0
+  register: _npu_dev
+  tags: [hardware, npu]
+
+- name: Fail if NPU device node missing (kernel driver problem)
+  ansible.builtin.fail:
+    msg: |
+      /dev/accel/accel0 not found. This is a kernel driver issue.
+      Run: dmesg | grep amdxdna
+      Expected: amdxdna 0.6.0 loaded for 0000:66:00.1
+  when: not _npu_dev.stat.exists
+  tags: [hardware, npu]
+
+- name: Check amdxdna module is loaded
+  ansible.builtin.command: lsmod
+  register: _lsmod
+  changed_when: false
+  tags: [hardware, npu]
+
+- name: Report kernel NPU state
+  ansible.builtin.debug:
+    msg: "amdxdna: {{ 'LOADED' if 'amdxdna' in _lsmod.stdout else 'NOT LOADED — check dmesg' }}"
+  tags: [hardware, npu]
+
+# ── Step 2: memlock fix (THE critical fix — xrt-smi sees nothing without this) ─
+- name: Deploy memlock limits for XDNA2
+  ansible.builtin.copy:
+    dest: /etc/security/limits.d/99-amdxdna.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # RaBbLE: AMD XDNA2 NPU requires unlimited memlock
+      # Without this, xrt-smi runs but cannot enumerate the NPU device.
+      # REBOOT required for this to take effect.
+      # Verified fix for HX 370 (same chip as lemonade#1315)
+      * soft memlock unlimited
+      * hard memlock unlimited
+  register: _memlock_changed
+  tags: [hardware, npu]
+
+- name: Warn about reboot requirement for memlock
+  ansible.builtin.debug:
+    msg: |
+      memlock limits written. REBOOT REQUIRED for xrt-smi to see the NPU.
+      After reboot verify: ulimit -l   (should print: unlimited)
+  when: _memlock_changed.changed
+  tags: [hardware, npu]
+
+# ── Step 3: Group membership and udev ────────────────────────────────────────
+- name: Add user to render and video groups
+  ansible.builtin.user:
+    name: "{{ rabble_user }}"
+    groups:
+      - render
+      - video
+    append: true
+  tags: [hardware, npu]
+
+- name: Deploy XDNA2 udev rule (unprivileged accel device access)
+  ansible.builtin.copy:
+    dest: /etc/udev/rules.d/99-amdxdna.rules
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      KERNEL=="accel*", SUBSYSTEM=="accel", GROUP="render", MODE="0660"
+  notify:
+    - Reload udev rules
+    - Trigger udev events
+  tags: [hardware, npu]
+
+# ── Step 4: COPR install ──────────────────────────────────────────────────────
+# No native AMD XDNA packages in Fedora 43 official repos.
+- name: Enable COPR xanderlent/amd-npu-driver
+  community.general.copr:
+    name: xanderlent/amd-npu-driver
+    state: enabled
+  tags: [hardware, npu]
+
+- name: Install XRT and XDNA packages via COPR
+  ansible.builtin.dnf:
+    name:
+      - xrt
+      - xdna-driver
+      - tcsh          # Required by XRT setup scripts
+    state: present
+  tags: [hardware, npu]
+
+# ── Step 5: Fix XRT lib symlinks (COPR install often breaks these) ────────────
+- name: Check if XRT installed at /usr/xrt
+  ansible.builtin.stat:
+    path: /usr/xrt/bin/xrt-smi
+  register: _xrt_present
+  tags: [hardware, npu]
+
+- name: Find versioned libxrt_core in lib64
+  ansible.builtin.find:
+    paths: /usr/xrt/lib64
+    patterns: "libxrt_core.so.*"
+  register: _xrt_core_lib
+  when: _xrt_present.stat.exists
+  tags: [hardware, npu]
+
+- name: Ensure /usr/xrt/lib directory exists
+  ansible.builtin.file:
+    path: /usr/xrt/lib
+    state: directory
+    mode: "0755"
+  when: _xrt_present.stat.exists
+  tags: [hardware, npu]
+
+- name: Fix libxrt_core symlink (COPR lib64/lib split)
+  ansible.builtin.file:
+    src: "../lib64/{{ _xrt_core_lib.files[0].path | basename }}"
+    dest: /usr/xrt/lib/libxrt_core.so.2
+    state: link
+    force: true
+  when:
+    - _xrt_present.stat.exists
+    - _xrt_core_lib.files | length > 0
+  tags: [hardware, npu]
+
+# ── Step 6: Environment profile ───────────────────────────────────────────────
+- name: Deploy XRT/NPU environment profile (login shells)
+  ansible.builtin.copy:
+    dest: /etc/profile.d/rabble-npu.sh
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # RaBbLE: AMD XDNA2 NPU / XRT environment
+      export XILINX_XRT=/usr/xrt
+      export XRT_PATH=/usr/xrt
+      # LD_LIBRARY_PATH is required — without it xrt-smi cannot find its libs
+      export LD_LIBRARY_PATH=/usr/xrt/lib:/usr/xrt/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+      export NPU_DEVICE=/dev/accel/accel0
+      # Convenience aliases
+      alias xrt-smi='sudo -E /usr/xrt/bin/xrt-smi'
+      alias npu-check='sudo -E /usr/xrt/bin/xrt-smi examine'
+      alias npu-status='ls -la /dev/accel/ && lsmod | grep amdxdna && ulimit -l'
+      # Source XRT setup.sh if present
+      [ -f /usr/xrt/setup.sh ] && source /usr/xrt/setup.sh
+  tags: [hardware, npu]
+
+- name: Set XRT vars in /etc/environment (non-login shells)
+  ansible.builtin.blockinfile:
+    path: /etc/environment
+    marker: "# {mark} RaBbLE XRT NPU"
+    block: |
+      XILINX_XRT=/usr/xrt
+      XRT_PATH=/usr/xrt
+  tags: [hardware, npu]
+
+# ── Step 7: Build dependencies for future FastFlowLM/XRT work ────────────────
+- name: Install XRT / FastFlowLM build dependencies
+  ansible.builtin.dnf:
+    name:
+      - boost-devel
+      - boost-static
+      - json-glib-devel
+      - libcurl-devel
+      - libuuid-devel
+      - opencl-headers
+      - OpenCL-ICD-Loader-devel
+      - pybind11-devel
+      - python3-pybind11
+    state: present
+  tags: [hardware, npu]
+
+- name: Print NPU verification steps
+  ansible.builtin.debug:
+    msg: |
+      XDNA2 role complete. Verification sequence:
+        1. REBOOT (memlock requires this)
+        2. ulimit -l                          → must print: unlimited
+        3. source /etc/profile.d/rabble-npu.sh
+        4. sudo -E /usr/xrt/bin/xrt-smi examine
+           Expected: NPU Strix at 0000:66:00.1
+      Troubleshooting:
+        sudo dmesg | grep -i "xrt\|xdna\|accel"
+        ls -la /usr/xrt/lib/libxrt_core.so.2
+        sudo -E /usr/xrt/bin/xrt-smi examine  (-E is critical)
+  tags: [hardware, npu]

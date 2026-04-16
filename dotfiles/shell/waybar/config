@@ -1,0 +1,145 @@
+// dotfiles/shell/waybar/config
+// =============================================================================
+// RaBbLE — Waybar configuration
+// Deploy to: ~/.config/waybar/config
+// Palette source: ansible/inventory/group_vars/all.yml
+//   #0a0010  bg         #ff2d78  primary (magenta)
+//   #00f5ff  accent     #bf5fff  violet
+//   #e8d5ff  text       #8860aa  muted   #120025  surface
+// =============================================================================
+
+{
+    "layer": "top",
+    "position": "top",
+    "height": 34,
+    "spacing": 0,
+    "exclusive": true,
+    "passthrough": false,
+    "gtk-layer-shell": true,
+
+    // ── Layout ──────────────────────────────────────────────────────────────
+    "modules-left":   ["hyprland/workspaces", "hyprland/window"],
+    "modules-center": ["clock"],
+    "modules-right":  ["network", "pulseaudio", "battery", "tray"],
+
+    // ── Workspaces ──────────────────────────────────────────────────────────
+    "hyprland/workspaces": {
+        "format": "{icon}",
+        "format-icons": {
+            "1":  "①",
+            "2":  "②",
+            "3":  "③",
+            "4":  "④",
+            "5":  "⑤",
+            "6":  "⑥",
+            "7":  "⑦",
+            "8":  "⑧",
+            "9":  "⑨",
+            "10": "⑩",
+            "urgent":  "",
+            "focused": "",
+            "default": "·"
+        },
+        "persistent-workspaces": {
+            "*": [1, 2, 3, 4, 5]
+        },
+        "on-click": "activate",
+        "on-scroll-up": "hyprctl dispatch workspace e-1",
+        "on-scroll-down": "hyprctl dispatch workspace e+1",
+        "sort-by-number": true
+    },
+
+    // ── Active window title ──────────────────────────────────────────────────
+    "hyprland/window": {
+        "format": "  {title}",
+        "max-length": 60,
+        "separate-outputs": true,
+        "rewrite": {
+            "(.*) — Mozilla Firefox": " $1",
+            "(.*) - VSCodium":        "󰨞 $1",
+            "(.*) - foot":            " $1",
+            "(.*) - kitty":           " $1",
+            "(.*)":                   "$1"
+        }
+    },
+
+    // ── Clock — 12hr AM/PM ───────────────────────────────────────────────────
+    "clock": {
+        "format": " {:%I:%M %p}",
+        "format-alt": " {:%a %b %d  %I:%M %p}",
+        "tooltip-format": "<big>{:%A, %B %d %Y}</big>\n<tt>{calendar}</tt>",
+        "calendar": {
+            "mode":          "month",
+            "weeks-pos":     "left",
+            "on-scroll":     1,
+            "format": {
+                "months":   "<span color='#ff2d78'><b>{}</b></span>",
+                "weekdays": "<span color='#8860aa'><b>{}</b></span>",
+                "today":    "<span color='#00f5ff'><b><u>{}</u></b></span>"
+            }
+        },
+        "actions": {
+            "on-click-right": "mode",
+            "on-scroll-up":   "shift_up",
+            "on-scroll-down": "shift_down"
+        }
+    },
+
+    // ── Network ─────────────────────────────────────────────────────────────
+    "network": {
+        "interval": 5,
+        "format-wifi":          " {essid} {signalStrength}%",
+        "format-ethernet":      "󰈀 {ifname}",
+        "format-disconnected":  "󰖪 offline",
+        "format-linked":        "󰈀 {ifname} (no IP)",
+        "tooltip-format-wifi":      " {essid}\nIP: {ipaddr}\nSignal: {signalStrength}%\n↓ {bandwidthDownBits}  ↑ {bandwidthUpBits}",
+        "tooltip-format-ethernet":  "󰈀 {ifname}\nIP: {ipaddr}\n↓ {bandwidthDownBits}  ↑ {bandwidthUpBits}",
+        "tooltip-format-disconnected": "Disconnected",
+        "on-click": "nm-connection-editor",
+        "max-length": 30
+    },
+
+    // ── Audio (PipeWire / PulseAudio) ────────────────────────────────────────
+    "pulseaudio": {
+        "format":        "{icon} {volume}%",
+        "format-muted":  "󰝟 muted",
+        "format-icons": {
+            "headphone":  "󰋋",
+            "hands-free": "󰋎",
+            "headset":    "󰋎",
+            "phone":      "",
+            "portable":   "",
+            "car":        "",
+            "default":    ["󰕿", "󰖀", "󰕾"]
+        },
+        "tooltip-format": "{desc}\nVolume: {volume}%",
+        "scroll-step": 2,
+        "on-click":       "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+        "on-click-right": "pavucontrol",
+        "max-volume": 150,
+        "ignored-sinks": ["Easy Effects Sink"]
+    },
+
+    // ── Battery ─────────────────────────────────────────────────────────────
+    "battery": {
+        "interval": 30,
+        "states": {
+            "warning":  30,
+            "critical": 15
+        },
+        "format":           "{icon} {capacity}%",
+        "format-charging":  "󰂄 {capacity}%",
+        "format-plugged":   "󰚥 {capacity}%",
+        "format-full":      "󰁹 full",
+        "format-icons":     ["󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"],
+        "tooltip-format": "{timeTo}\nPower draw: {power}W\nCycles: {cycles}",
+        "on-click": "asusctl profile -n"
+    },
+
+    // ── System Tray ─────────────────────────────────────────────────────────
+    "tray": {
+        "icon-size": 16,
+        "spacing": 8,
+        "show-passive-items": true
+    }
+}

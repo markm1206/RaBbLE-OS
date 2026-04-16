@@ -1,0 +1,163 @@
+---
+# ansible/roles/snapper/tasks/main.yml
+# =============================================================================
+# Snapper — Btrfs snapshot management
+#
+# MERGE NOTES:
+#   BaBbLE had verified btrfs layout for Fedora 43 (subvol 'root'/'home',
+#   NOT '@'/'@home'). It also added:
+#     - /home subvolume config (RaBbLE only did root)
+#     - snap-pac config with important_packages list
+#     - initial baseline snapshot
+#     - correct guard: only creates config if it doesn't exist
+#   RaBbLE had grub-btrfs integration and ACL for the user — both kept.
+# =============================================================================
+
+- name: Install snapper, snap-pac, and grub-btrfs
+  ansible.builtin.dnf:
+    name:
+      - snapper
+      - python3-dnf-plugin-snapper   # dnf pre/post hooks
+      - btrfs-progs
+      - grub2-btrfs                  # boot into snapshots from GRUB menu
+    state: present
+  tags: [snapper]
+
+- name: Check if root is btrfs
+  ansible.builtin.command: findmnt -n -o FSTYPE /
+  register: _root_fstype
+  changed_when: false
+  tags: [snapper]
+
+- name: Skip snapper config on non-btrfs root
+  ansible.builtin.debug:
+    msg: >
+      Root filesystem is '{{ _root_fstype.stdout }}', not btrfs.
+      Snapper snapshot configs require btrfs — skipping config creation.
+  when: _root_fstype.stdout | trim != 'btrfs'
+  tags: [snapper]
+
+- name: Configure snapper (btrfs only)
+  when: _root_fstype.stdout | trim == 'btrfs'
+  block:
+
+    # ── Root subvolume ─────────────────────────────────────────────────────
+    - name: Create snapper config for / (root subvolume)
+      ansible.builtin.command:
+        cmd: snapper -c root create-config /
+      args:
+        creates: /etc/snapper/configs/root
+      register: _snap_root_created
+      tags: [snapper]
+
+    - name: Deploy root snapshot policy
+      ansible.builtin.template:
+        src: snapper-root.conf.j2
+        dest: /etc/snapper/configs/root
+        owner: root
+        group: root
+        mode: "0640"
+      tags: [snapper]
+
+    # ── Home subvolume ─────────────────────────────────────────────────────
+    - name: Check if /home is on a separate btrfs subvolume
+      ansible.builtin.command: findmnt -n -o FSTYPE /home
+      register: _home_fstype
+      changed_when: false
+      failed_when: false
+      tags: [snapper]
+
+    - name: Create snapper config for /home (if btrfs subvolume)
+      ansible.builtin.command:
+        cmd: snapper -c home create-config /home
+      args:
+        creates: /etc/snapper/configs/home
+      when: _home_fstype.stdout | trim == 'btrfs'
+      tags: [snapper]
+
+    - name: Deploy home snapshot policy
+      ansible.builtin.template:
+        src: snapper-home.conf.j2
+        dest: /etc/snapper/configs/home
+        owner: root
+        group: root
+        mode: "0640"
+      when: _home_fstype.stdout | trim == 'btrfs'
+      tags: [snapper]
+
+    # ── snap-pac configuration ─────────────────────────────────────────────
+    - name: Deploy snap-pac config (auto-snapshot on important dnf ops)
+      ansible.builtin.copy:
+        dest: /etc/snap-pac.ini
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          # RaBbLE snap-pac: snapshot before/after critical package operations
+          [root]
+          snapshot = True
+          important_packages = ["kernel*", "akmod-nvidia", "amdxdna*", "xrt", "grub2*"]
+
+          [home]
+          snapshot = False
+      tags: [snapper]
+
+    # ── Timers ────────────────────────────────────────────────────────────
+    - name: Enable snapper timeline and cleanup timers
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop:
+        - snapper-timeline.timer
+        - snapper-cleanup.timer
+      tags: [snapper]
+
+    - name: Enable grub-btrfs snapshot detection
+      ansible.builtin.systemd:
+        name: grub-btrfs.path
+        enabled: true
+        state: started
+      ignore_errors: true
+      tags: [snapper]
+
+    # ── User ACL on /.snapshots ────────────────────────────────────────────
+    - name: Allow user to list snapshots without sudo
+      ansible.posix.acl:
+        path: /.snapshots
+        entity: "{{ rabble_user }}"
+        etype: user
+        permissions: rx
+        state: present
+      ignore_errors: true
+      tags: [snapper]
+
+    # ── Initial baseline snapshot ──────────────────────────────────────────
+    - name: Create initial baseline snapshot (once)
+      ansible.builtin.command: >
+        snapper -c root create
+        --type single
+        --description "RaBbLE baseline: {{ ansible_date_time.date }}"
+      args:
+        creates: /etc/snapper/configs/.baseline-created
+      register: _baseline
+      tags: [snapper]
+
+    - name: Mark baseline as created
+      ansible.builtin.file:
+        path: /etc/snapper/configs/.baseline-created
+        state: touch
+        mode: "0644"
+      when: _baseline.changed
+      tags: [snapper]
+
+    - name: Report snapper setup
+      ansible.builtin.debug:
+        msg: |
+          Snapper configured for {{ 'root + home' if _home_fstype.stdout | trim == 'btrfs' else 'root only' }}.
+          Commands:
+            snapper -c root list                   → list snapshots
+            snapper -c root create --description X → manual snapshot
+            snapper -c root diff N..M              → diff between snapshots
+            sudo snapper rollback N                → rollback (then reboot)
+      tags: [snapper]

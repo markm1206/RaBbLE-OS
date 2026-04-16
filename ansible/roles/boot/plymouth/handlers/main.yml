@@ -1,0 +1,6 @@
+---
+# ansible/roles/boot/plymouth/handlers/main.yml
+
+- name: Set Plymouth theme and rebuild initramfs
+  ansible.builtin.command: plymouth-set-default-theme -R rabble
+  listen: Set Plymouth theme and rebuild initramfs

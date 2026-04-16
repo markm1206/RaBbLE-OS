@@ -1,0 +1,67 @@
+---
+# ansible/roles/ui_ux/shell/zsh/tasks/main.yml
+# Installs zsh, zinit, and p10k. Dotfiles are deployed by deploy-dotfiles.yml.
+
+- name: Install zsh
+  ansible.builtin.dnf:
+    name:
+      - zsh
+      - zsh-syntax-highlighting
+      - zsh-autosuggestions
+    state: present
+  tags: [ui_ux, shell, zsh]
+
+- name: Set zsh as default shell for user
+  ansible.builtin.user:
+    name:  "{{ rabble_user }}"
+    shell: /bin/zsh
+  tags: [ui_ux, shell, zsh]
+
+- name: Create zsh config and state directories
+  ansible.builtin.file:
+    path:  "{{ item }}"
+    state: directory
+    owner: "{{ rabble_user }}"
+    mode:  "0755"
+  loop:
+    - "{{ rabble_home }}/.config/zsh"
+    - "{{ rabble_home }}/.local/share/zinit"
+    - "{{ rabble_home }}/.local/state/zsh"
+  become: false
+  tags: [ui_ux, shell, zsh]
+
+- name: Set ZDOTDIR in ~/.zshenv
+  ansible.builtin.lineinfile:
+    path:   "{{ rabble_home }}/.zshenv"
+    line:   'export ZDOTDIR="${HOME}/.config/zsh"'
+    create: true
+    owner:  "{{ rabble_user }}"
+    mode:   "0644"
+  become: false
+  tags: [ui_ux, shell, zsh]
+
+- name: Install zinit plugin manager
+  ansible.builtin.git:
+    repo:    https://github.com/zdharma-continuum/zinit
+    dest:    "{{ rabble_home }}/.local/share/zinit/zinit.git"
+    version: HEAD
+    depth:   1
+  become: false
+  tags: [ui_ux, shell, zsh]
+
+- name: Install powerlevel10k
+  ansible.builtin.git:
+    repo:    https://github.com/romkatv/powerlevel10k
+    dest:    "{{ rabble_home }}/.local/share/zinit/plugins/romkatv---powerlevel10k"
+    version: HEAD
+    depth:   1
+  become: false
+  tags: [ui_ux, shell, zsh]
+
+- name: Remind operator to deploy zsh dotfiles
+  ansible.builtin.debug:
+    msg: >
+      Zsh installed. Run deploy-dotfiles.yml to copy
+      .zshrc, .zprofile, aliases.zsh, functions.zsh, and p10k.zsh
+      into ~/.config/zsh/.
+  tags: [ui_ux, shell, zsh]

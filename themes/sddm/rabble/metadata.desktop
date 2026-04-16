@@ -1,0 +1,16 @@
+[SddmGreeterTheme]
+Name=RaBbLE
+Description=RaBbLE OS — Dark Wayland greeter with violet accent
+Author=RaBbLE Project
+Version=0.1.0
+License=MIT
+Type=sddm-theme
+MainScript=Main.qml
+
+[Geometry]
+ScreenWidth=1920
+ScreenHeight=1080
+
+[Font]
+Family=JetBrainsMono Nerd Font
+Size=13

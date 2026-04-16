@@ -1,0 +1,89 @@
+---
+# ansible/roles/ui_ux/hyprland/tasks/main.yml
+# =============================================================================
+# Hyprland + supporting Wayland stack
+#
+# Dotfile strategy: COPY (not symlink)
+#   - deploy-dotfiles.yml handles the copy from dotfiles/ to ~/.config/hypr/
+#   - This role installs packages and generates machine.conf only
+#   - machine.conf is a template (monitor/scale/GPU) — not from dotfiles/
+# =============================================================================
+
+- name: Install Hyprland and Wayland stack
+  ansible.builtin.dnf:
+    name:
+      - hyprland
+      - hyprland-devel
+      - xdg-desktop-portal-hyprland
+      - xdg-desktop-portal-gtk
+      - xdg-desktop-portal
+      - waybar
+      - mako
+      - fuzzel
+      - wl-clipboard
+      - wlr-randr
+      - kanshi
+      - hyprpaper
+      - hypridle
+      - hyprlock
+      - grim
+      - slurp
+      - wf-recorder
+      - polkit
+      - network-manager-applet
+      - cliphist
+    state: present
+  tags: [ui_ux, hyprland]
+
+- name: Install Qt6 Wayland support
+  ansible.builtin.dnf:
+    name:
+      - qt6-qtwayland
+      - qt5-qtwayland
+    state: present
+  tags: [ui_ux, hyprland]
+
+- name: Create Hyprland config directory
+  ansible.builtin.file:
+    path: "{{ rabble_config_home }}/hypr"
+    state: directory
+    owner: "{{ rabble_user }}"
+    mode: "0755"
+  become: false
+  tags: [ui_ux, hyprland]
+
+# machine.conf is NOT from dotfiles/ — it is machine-specific and
+# templated by ansible from group_vars (monitor, scale, GPU mode).
+# It is NOT managed by deploy-dotfiles.yml.
+- name: Deploy machine-specific Hyprland overrides
+  ansible.builtin.template:
+    src: hyprland-machine.conf.j2
+    dest: "{{ rabble_config_home }}/hypr/machine.conf"
+    owner: "{{ rabble_user }}"
+    mode: "0644"
+  become: false
+  tags: [ui_ux, hyprland]
+
+# Deploy all tracked dotfiles via the dedicated playbook
+- name: Deploy Hyprland dotfiles from repo
+  ansible.builtin.import_playbook: "{{ playbook_dir }}/deploy-dotfiles.yml"
+  tags: [ui_ux, hyprland, dotfiles]
+  when: false  # called explicitly; role just installs packages + machine.conf
+
+- name: Remind operator to run deploy-dotfiles
+  ansible.builtin.debug:
+    msg: >
+      Hyprland packages installed. Run deploy-dotfiles.yml (or
+      bootstrap.sh → Dotfile Tools → Deploy dotfiles) to copy
+      conf.d/, scripts/, and hyprland.conf into ~/.config/hypr/.
+  tags: [ui_ux, hyprland]
+
+- name: Enable hypridle user service
+  ansible.builtin.systemd:
+    name: hypridle
+    enabled: true
+    state: started
+    scope: user
+  become: false
+  ignore_errors: true
+  tags: [ui_ux, hyprland]

@@ -1,0 +1,143 @@
+---
+# ansible/roles/hardware/x64/asus_proart_p16/tasks/nvidia.yml
+# =============================================================================
+# NVIDIA RTX 4060 Max-Q Mobile — Optimus/PRIME offload
+#
+# ARCHITECTURE:
+#   The AMD 890M drives the Wayland compositor and display.
+#   The RTX 4060 is PRIME offload only — accessed via DRI_PRIME=1 or
+#   the `rabble-gpu` helper for CUDA/ML workloads.
+#
+# CRITICAL SEQUENCE:
+#   1. Blacklist nouveau (sourced from BaBbLE — this was missing from RaBbLE)
+#   2. Rebuild initramfs (nouveau blacklist must be in initrd)
+#   3. Reboot (nouveau must not be in RAM when akmod builds)
+#   4. Install akmod-nvidia + CUDA libs
+#   5. Configure Wayland/Optimus modprobe options
+#   6. Enable NVIDIA power management services
+# =============================================================================
+
+# ── Step 1: Blacklist nouveau ─────────────────────────────────────────────────
+- name: Blacklist nouveau kernel module
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/blacklist-nouveau.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # RaBbLE: blacklist nouveau to allow akmod-nvidia
+      blacklist nouveau
+      options nouveau modeset=0
+  notify: Rebuild initramfs
+  tags: [hardware, nvidia]
+
+- name: Check if nouveau is currently loaded
+  ansible.builtin.command: lsmod
+  register: _lsmod
+  changed_when: false
+  tags: [hardware, nvidia]
+
+- name: Warn if nouveau still in RAM (reboot required before proceeding)
+  ansible.builtin.debug:
+    msg: |
+      ⚠  nouveau is currently loaded. The blacklist takes effect after
+      initramfs rebuild + reboot. Run this playbook again after rebooting.
+  when: "'nouveau' in _lsmod.stdout"
+  tags: [hardware, nvidia]
+
+# ── Step 2: NVIDIA driver install ────────────────────────────────────────────
+- name: Install akmod-nvidia and CUDA support
+  ansible.builtin.dnf:
+    name:
+      - akmod-nvidia
+      - xorg-x11-drv-nvidia
+      - xorg-x11-drv-nvidia-cuda
+      - xorg-x11-drv-nvidia-cuda-libs
+      - libva-nvidia-driver
+      - libva-utils
+      - nvidia-driver-cuda
+    state: present
+  when: "'nouveau' not in _lsmod.stdout"
+  tags: [hardware, nvidia]
+
+# ── Step 3: Wayland + suspend configuration ───────────────────────────────────
+- name: Deploy NVIDIA modprobe config (Wayland + s2idle)
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/nvidia-rabble.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # RaBbLE: NVIDIA Wayland + Strix Point s2idle configuration
+      # DRM modeset + fbdev required for Wayland + Plymouth
+      options nvidia-drm modeset=1 fbdev=1
+      # s2idle power management (Strix Point requires this — no S3 support)
+      options nvidia NVreg_EnableS0ixPowerManagement=1
+      # Preserve VRAM across suspend (critical for laptop — prevents corruption)
+      options nvidia NVreg_PreserveVideoMemoryAllocations=1
+      options nvidia NVreg_TemporaryFilePath=/var/tmp
+      # GSP firmware for 40-series power management
+      options nvidia NVreg_EnableGpuFirmware=1
+      options nvidia NVreg_UsePageAttributeTable=1
+  notify: Rebuild initramfs
+  tags: [hardware, nvidia]
+
+- name: Create NVIDIA suspend service override directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/nvidia-suspend.service.d
+    state: directory
+    mode: "0755"
+  tags: [hardware, nvidia]
+
+- name: Enable NVIDIA power management services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+  loop:
+    - nvidia-hibernate.service
+    - nvidia-suspend.service
+    - nvidia-resume.service
+  ignore_errors: true   # Services only exist after akmod build completes
+  tags: [hardware, nvidia]
+
+# ── Step 4: PRIME offload helpers ────────────────────────────────────────────
+- name: Deploy rabble-gpu PRIME offload helper
+  ansible.builtin.copy:
+    dest: /usr/local/bin/rabble-gpu
+    owner: root
+    group: root
+    mode: "0755"
+    content: |
+      #!/bin/bash
+      # RaBbLE: Run a command on the NVIDIA RTX 4060 via PRIME offload
+      # Usage: rabble-gpu <command> [args...]
+      # Example: rabble-gpu nvidia-smi
+      #          DRI_PRIME=pci-0000_64_00_0 glxinfo | grep renderer
+      export DRI_PRIME=pci-0000_64_00_0
+      export __NV_PRIME_RENDER_OFFLOAD=1
+      export __NV_PRIME_RENDER_OFFLOAD_PROVIDER=NVIDIA-G0
+      export __GLX_VENDOR_LIBRARY_NAME=nvidia
+      export __VK_LAYER_NV_optimus=NVIDIA_only
+      exec "$@"
+  tags: [hardware, nvidia]
+
+- name: Deploy NVIDIA environment profile
+  ansible.builtin.copy:
+    dest: /etc/profile.d/rabble-nvidia.sh
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # RaBbLE: NVIDIA PRIME environment
+      # Default renderer is AMD 890M. Use 'rabble-gpu <cmd>' for RTX 4060.
+      export CUDA_VISIBLE_DEVICES=0
+  tags: [hardware, nvidia]
+
+- name: Report NVIDIA status
+  ansible.builtin.debug:
+    msg: |
+      NVIDIA role done. If nouveau was loaded, REBOOT now, then re-run.
+      After reboot: lsmod | grep nvidia    (should show nvidia, nvidia_drm)
+      Test PRIME:   rabble-gpu glxinfo | grep renderer
+      Test CUDA:    nvidia-smi
+  tags: [hardware, nvidia]

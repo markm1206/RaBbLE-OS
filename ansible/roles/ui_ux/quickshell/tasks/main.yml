@@ -1,0 +1,61 @@
+---
+# ansible/roles/ui_ux/quickshell/tasks/main.yml
+# =============================================================================
+# Quickshell — QML shell UI
+#
+# Dotfile strategy: COPY (not symlink)
+#   deploy-dotfiles.yml copies dotfiles/quickshell/ into ~/.config/quickshell/
+#   This role only installs/builds the quickshell binary.
+# =============================================================================
+
+- name: Install Quickshell build dependencies
+  ansible.builtin.dnf:
+    name:
+      - qt6-qtbase
+      - qt6-qtdeclarative
+      - qt6-qtsvg
+      - qt6-qt5compat
+      - qt6-qtwayland
+      - qt6-qttools
+      - qt6-qtshadertools-devel
+      - cmake
+      - ninja-build
+      - gcc-c++
+      - extra-cmake-modules
+    state: present
+  tags: [ui_ux, quickshell]
+
+- name: Check if quickshell binary is installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/quickshell
+  register: _qs_bin
+  tags: [ui_ux, quickshell]
+
+
+- name: Enable the errornointernet/quickshell Copr repository
+  community.general.copr:
+    name: errornointernet/quickshell
+    state: enabled
+
+- name: Install Quickshell package
+  ansible.builtin.dnf:
+    name: quickshell
+    state: present
+    update_cache: yes
+
+- name: Create Quickshell config directory
+  ansible.builtin.file:
+    path:  "{{ rabble_config_home }}/quickshell"
+    state: directory
+    owner: "{{ rabble_user }}"
+    mode:  "0755"
+  become: false
+  tags: [ui_ux, quickshell]
+
+- name: Remind operator to run deploy-dotfiles
+  ansible.builtin.debug:
+    msg: >
+      Quickshell binary installed. Run deploy-dotfiles.yml (or
+      bootstrap.sh → Dotfile Tools → Deploy dotfiles) to copy
+      shell.qml, bar/, launcher/, and widgets/ into ~/.config/quickshell/.
+  tags: [ui_ux, quickshell]

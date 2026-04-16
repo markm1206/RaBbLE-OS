@@ -1,0 +1,31 @@
+---
+# ansible/roles/hardware/x64/asus_proart_p16/handlers/main.yml
+
+- name: Rebuild initramfs
+  ansible.builtin.command: dracut --force --regenerate-all
+  listen: Rebuild initramfs
+
+- name: Reload udev rules
+  ansible.builtin.command: udevadm control --reload-rules
+  listen: Reload udev rules
+
+- name: Trigger udev events
+  ansible.builtin.command: udevadm trigger
+  listen: Trigger udev events
+
+- name: Restart asusd
+  ansible.builtin.systemd:
+    name: asusd
+    state: restarted
+  listen: Restart asusd
+
+- name: Restart supergfxd
+  ansible.builtin.systemd:
+    name: asusd
+    state: restarted
+  listen: Restart supergfxd
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: Reload systemd

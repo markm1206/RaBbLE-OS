@@ -1,0 +1,215 @@
+---
+# ansible/playbooks/deploy-dotfiles.yml
+# =============================================================================
+# RaBbLE dotfile deployment
+#
+# STRATEGY: Copy, not symlink.
+#
+# Why copies instead of symlinks?
+#   Symlinks require the repo to stay at a fixed absolute path forever.
+#   If the repo moves, every symlink silently breaks. Copies are durable:
+#   the deployed files work independently of where the repo lives.
+#
+# Live development workflow:
+#   1. Edit files in dotfiles/ in the repo  →  run this playbook to deploy
+#   2. Edit deployed files directly  →  run pull-dotfiles.yml to bring
+#      changes back into the repo before committing
+#
+# Idempotent: unchanged files produce no diff output.
+# Drifted files are flagged when run with --diff (bootstrap does this).
+# =============================================================================
+
+- name: Deploy RaBbLE dotfiles
+  hosts: all
+  become: false
+
+  vars:
+    df:   "{{ rabble_repo_root }}/dotfiles"
+    cfg:  "{{ ansible_env.HOME }}/.config"
+    home: "{{ ansible_env.HOME }}"
+
+  tasks:
+
+    # ── Ensure target directories exist ────────────────────────────────────────
+    - name: Create required config directories
+      ansible.builtin.file:
+        path:  "{{ item }}"
+        state: directory
+        mode:  "0755"
+      loop:
+        - "{{ cfg }}/hypr/conf.d"
+        - "{{ cfg }}/hypr/scripts"
+        - "{{ cfg }}/quickshell/bar"
+        - "{{ cfg }}/quickshell/launcher"
+        - "{{ cfg }}/quickshell/widgets"
+        - "{{ cfg }}/zsh"
+        - "{{ cfg }}/foot"
+        - "{{ cfg }}/mako"
+        - "{{ home }}/.local/state/zsh"
+        - "{{ home }}/.local/state/bash"
+
+    # ── Hyprland ───────────────────────────────────────────────────────────────
+    - name: Deploy hyprland.conf
+      ansible.builtin.copy:
+        src:    "{{ df }}/hyprland/hyprland.conf"
+        dest:   "{{ cfg }}/hypr/hyprland.conf"
+        mode:   "0644"
+        backup: true
+      tags: [dotfiles, hyprland]
+
+    - name: Deploy hyprland conf.d modules
+      ansible.builtin.copy:
+        src:    "{{ df }}/hyprland/conf.d/{{ item }}"
+        dest:   "{{ cfg }}/hypr/conf.d/{{ item }}"
+        mode:   "0644"
+        backup: true
+      loop:
+        - animations.conf
+        - autostart.conf
+        - env.conf
+        - input.conf
+        - keybinds.conf
+        - look.conf
+        - windowrules.conf
+        - workspaces.conf
+      tags: [dotfiles, hyprland]
+
+    - name: Deploy hyprland scripts
+      ansible.builtin.copy:
+        src:    "{{ df }}/hyprland/scripts/{{ item.src }}"
+        dest:   "{{ cfg }}/hypr/scripts/{{ item.dest }}"
+        mode:   "{{ item.mode | default('0644') }}"
+        backup: true
+      loop:
+        - { src: screenshot.sh,          dest: screenshot.sh,          mode: "0755" }
+        - { src: help.sh,                dest: help.sh,                mode: "0755" }
+        - { src: hyprlock.conf,          dest: hyprlock.conf }
+        - { src: hyprpaper.conf.example, dest: hyprpaper.conf.example }
+      tags: [dotfiles, hyprland]
+
+    # ── Quickshell ─────────────────────────────────────────────────────────────
+    - name: Deploy quickshell root
+      ansible.builtin.copy:
+        src:    "{{ df }}/quickshell/shell.qml"
+        dest:   "{{ cfg }}/quickshell/shell.qml"
+        mode:   "0644"
+        backup: true
+      tags: [dotfiles, quickshell]
+
+    - name: Deploy quickshell bar widgets
+      ansible.builtin.copy:
+        src:    "{{ df }}/quickshell/bar/{{ item }}"
+        dest:   "{{ cfg }}/quickshell/bar/{{ item }}"
+        mode:   "0644"
+        backup: true
+      loop:
+        - RaBbLEBar.qml
+        - WorkspaceBar.qml
+        - ClockWidget.qml
+        - AudioWidget.qml
+        - BatteryWidget.qml
+        - NetworkWidget.qml
+        - WindowTitle.qml
+        - BarSeparator.qml
+        - SystemTrayWidget.qml
+      tags: [dotfiles, quickshell]
+
+    - name: Deploy quickshell launcher
+      ansible.builtin.copy:
+        src:    "{{ df }}/quickshell/launcher/RaBbLELauncher.qml"
+        dest:   "{{ cfg }}/quickshell/launcher/RaBbLELauncher.qml"
+        mode:   "0644"
+        backup: true
+      tags: [dotfiles, quickshell]
+
+    - name: Deploy quickshell widgets
+      ansible.builtin.copy:
+        src:    "{{ df }}/quickshell/widgets/NotificationPopup.qml"
+        dest:   "{{ cfg }}/quickshell/widgets/NotificationPopup.qml"
+        mode:   "0644"
+        backup: true
+      tags: [dotfiles, quickshell]
+
+    # ── Zsh ────────────────────────────────────────────────────────────────────
+    - name: Ensure ZDOTDIR is set in ~/.zshenv
+      ansible.builtin.lineinfile:
+        path:   "{{ home }}/.zshenv"
+        line:   'export ZDOTDIR="${HOME}/.config/zsh"'
+        create: true
+        mode:   "0644"
+      tags: [dotfiles, shell, zsh]
+
+    - name: Deploy zsh dotfiles
+      ansible.builtin.copy:
+        src:    "{{ df }}/shell/zsh/{{ item }}"
+        dest:   "{{ cfg }}/zsh/{{ item }}"
+        mode:   "0644"
+        backup: true
+      loop:
+        - .zshrc
+        - .zprofile
+        - aliases.zsh
+        - functions.zsh
+        - p10k.zsh
+      tags: [dotfiles, shell, zsh]
+
+    # ── Bash ───────────────────────────────────────────────────────────────────
+    - name: Deploy bash dotfiles
+      ansible.builtin.copy:
+        src:    "{{ df }}/shell/bash/{{ item.src }}"
+        dest:   "{{ home }}/{{ item.dest }}"
+        mode:   "0644"
+        backup: true
+      loop:
+        - { src: .bashrc,       dest: .bashrc }
+        - { src: .bash_profile, dest: .bash_profile }
+        - { src: aliases.sh,    dest: .bash_aliases }
+      tags: [dotfiles, shell, bash]
+
+    # ── Starship ───────────────────────────────────────────────────────────────
+    - name: Deploy starship.toml
+      ansible.builtin.copy:
+        src:    "{{ df }}/shell/starship.toml"
+        dest:   "{{ cfg }}/starship.toml"
+        mode:   "0644"
+        backup: true
+      tags: [dotfiles, shell]
+
+    # ── Foot ───────────────────────────────────────────────────────────────────
+    - name: Deploy foot.ini
+      ansible.builtin.copy:
+        src:    "{{ df }}/shell/foot.ini"
+        dest:   "{{ cfg }}/foot/foot.ini"
+        mode:   "0644"
+        backup: true
+      tags: [dotfiles, terminal]
+
+    # ── Mako ───────────────────────────────────────────────────────────────────
+    - name: Deploy mako config
+      ansible.builtin.copy:
+        src:    "{{ df }}/shell/mako.conf"
+        dest:   "{{ cfg }}/mako/config"
+        mode:   "0644"
+        backup: true
+      tags: [dotfiles, notifications]
+
+    # ── Post-deploy: reload live services ──────────────────────────────────────
+    - name: Reload Hyprland config (if running)
+      ansible.builtin.command: hyprctl reload
+      changed_when: false
+      failed_when: false
+      when: ansible_env.HYPRLAND_INSTANCE_SIGNATURE is defined
+      tags: [dotfiles, hyprland, reload]
+
+    - name: Reload mako (if running)
+      ansible.builtin.command: makoctl reload
+      changed_when: false
+      failed_when: false
+      tags: [dotfiles, notifications, reload]
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: >
+          Dotfiles deployed from {{ df }}.
+          Quickshell and terminals pick up changes on next restart.
+          Run pull-dotfiles.yml before committing if you edited deployed files directly.

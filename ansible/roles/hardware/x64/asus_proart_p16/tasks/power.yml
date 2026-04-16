@@ -1,0 +1,26 @@
+---
+# tasks/power.yml
+- name: Install power management tools
+  ansible.builtin.dnf:
+    name:
+      - power-profiles-daemon
+      - thermald
+      - tlp
+      - tlp-rdw
+    state: present
+  tags: [hardware, power]
+
+- name: Enable power-profiles-daemon
+  ansible.builtin.systemd:
+    name: power-profiles-daemon
+    enabled: true
+    state: started
+  tags: [hardware, power]
+
+- name: Disable tlp (conflicts with power-profiles-daemon)
+  ansible.builtin.systemd:
+    name: tlp
+    enabled: false
+    state: stopped
+  ignore_errors: true
+  tags: [hardware, power]

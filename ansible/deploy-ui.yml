@@ -1,0 +1,16 @@
+---
+# ansible/playbooks/deploy-ui.yml
+- name: Deploy UI / UX layer
+  hosts: all
+  become: false
+  roles:
+    - role: ui_ux/hyprland
+      tags: [ui_ux, hyprland]
+    - role: ui_ux/quickshell
+      tags: [ui_ux, quickshell]
+    - role: ui_ux/terminal
+      tags: [ui_ux, terminal]
+    - role: ui_ux/shell/zsh
+      tags: [ui_ux, shell, zsh]
+    - role: ui_ux/shell/bash
+      tags: [ui_ux, shell, bash]

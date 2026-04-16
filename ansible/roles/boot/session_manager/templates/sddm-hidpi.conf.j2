@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+# /etc/sddm.conf.d/25-hidpi.conf
+
+[Wayland]
+EnableHiDPI={{ 'true' if rabble_hidpi_scale | int > 1 else 'false' }}
+
+[General]
+{% if rabble_hidpi_scale | int > 1 %}
+GreeterEnvironment=QT_SCREEN_SCALE_FACTORS={{ rabble_hidpi_scale }},QT_FONT_DPI={{ 96 * rabble_hidpi_scale | int }},XCURSOR_SIZE={{ 24 * rabble_hidpi_scale | int }}
+{% endif %}

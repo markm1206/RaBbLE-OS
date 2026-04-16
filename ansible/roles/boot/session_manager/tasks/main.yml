@@ -1,0 +1,171 @@
+---
+# ansible/roles/boot/session_manager/tasks/main.yml
+# =============================================================================
+# SDDM — Wayland session manager
+#
+# MERGE NOTES:
+#   BaBbLE split SDDM config into numbered conf.d files (10-wayland.conf,
+#   20-locale.conf, 30-theme.conf) — this is better practice than a single
+#   monolithic conf because individual concerns can be updated independently.
+#
+#   BaBbLE correctly identified that the custom QML theme needs testing before
+#   activating — it defaults to `breeze` and deploys the custom theme as a
+#   WIP alongside it. RaBbLE's full QML Main.qml is deployed but breeze
+#   stays active until you flip the conf.
+#
+#   BaBbLE added qt6-qtvirtualkeyboard which RaBbLE was missing.
+#   BaBbLE also fixed the locale warning via a dedicated conf.d entry.
+# =============================================================================
+
+- name: Install SDDM and Qt6 Wayland stack
+  ansible.builtin.dnf:
+    name:
+      - sddm
+      - qt6-qtdeclarative
+      - qt6-qtsvg
+      - qt6-qt5compat
+      - qt6-qtwayland
+      - qt6-qtvirtualkeyboard
+    state: present
+  tags: [boot, sddm]
+
+- name: Enable SDDM service
+  ansible.builtin.systemd:
+    name: sddm
+    enabled: true
+  tags: [boot, sddm]
+
+- name: Create /etc/sddm.conf.d directory
+  ansible.builtin.file:
+    path: /etc/sddm.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [boot, sddm]
+
+# ── 10-wayland.conf ───────────────────────────────────────────────────────────
+- name: Deploy SDDM Wayland compositor config
+  ansible.builtin.copy:
+    dest: /etc/sddm.conf.d/10-wayland.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [General]
+      DisplayServer=wayland
+      GreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell
+      HaltCommand=/usr/bin/systemctl poweroff
+      RebootCommand=/usr/bin/systemctl reboot
+      Numlock=on
+
+      [Wayland]
+      CompositorCommand=kwin_wayland --no-global-shortcuts
+  notify: Restart SDDM
+  tags: [boot, sddm]
+
+# ── 20-locale.conf ────────────────────────────────────────────────────────────
+- name: Deploy SDDM locale config (fixes UTF-8 warning)
+  ansible.builtin.copy:
+    dest: /etc/sddm.conf.d/20-locale.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [General]
+      Lang={{ system_locale | default('en_US.UTF-8') }}
+  notify: Restart SDDM
+  tags: [boot, sddm]
+
+# ── 25-hidpi.conf ─────────────────────────────────────────────────────────────
+- name: Deploy SDDM HiDPI config
+  ansible.builtin.template:
+    src: sddm-hidpi.conf.j2
+    dest: /etc/sddm.conf.d/25-hidpi.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart SDDM
+  tags: [boot, sddm]
+
+# ── Users config ──────────────────────────────────────────────────────────────
+- name: Deploy SDDM users config
+  ansible.builtin.copy:
+    dest: /etc/sddm.conf.d/22-users.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Users]
+      HideShells=/bin/false:/usr/bin/false:/sbin/nologin
+      MaximumUid=60000
+      MinimumUid=1000
+      RememberLastSession=true
+      RememberLastUser=true
+  tags: [boot, sddm]
+
+# ── Deploy RaBbLE custom theme (as WIP — not yet active) ─────────────────────
+- name: Create RaBbLE SDDM theme directory
+  ansible.builtin.file:
+    path: /usr/share/sddm/themes/rabble
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [boot, sddm]
+
+- name: Deploy RaBbLE SDDM theme from repo (if present)
+  ansible.builtin.copy:
+    src: "{{ rabble_themes_dir }}/sddm/rabble/"
+    dest: /usr/share/sddm/themes/rabble/
+    owner: root
+    group: root
+    mode: "0644"
+  ignore_errors: true
+  tags: [boot, sddm]
+
+# ── 30-theme.conf ─────────────────────────────────────────────────────────────
+# Active theme is breeze (stable). Flip to rabble after testing:
+#   sddm-greeter-qt6 --test-mode --theme /usr/share/sddm/themes/rabble
+- name: Deploy SDDM active theme config
+  ansible.builtin.copy:
+    dest: /etc/sddm.conf.d/30-theme.conf
+    owner: root
+    group: root
+    mode: "0644"
+    force: false   # Don't overwrite if user has already switched to custom theme
+    content: |
+      # Active SDDM theme.
+      # To test the RaBbLE custom theme:
+      #   sddm-greeter-qt6 --test-mode --theme /usr/share/sddm/themes/rabble
+      # To activate:
+      #   Change Current=breeze  to  Current=rabble
+      # Then: sudo systemctl restart sddm
+      [Theme]
+      Current=breeze
+      ThemeDir=/usr/share/sddm/themes
+  notify: Restart SDDM
+  tags: [boot, sddm]
+
+# ── Wayland session file ──────────────────────────────────────────────────────
+- name: Ensure Hyprland wayland session file exists
+  ansible.builtin.copy:
+    dest: /usr/share/wayland-sessions/hyprland.desktop
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Desktop Entry]
+      Name=Hyprland
+      Comment=A dynamic tiling Wayland compositor
+      Exec=Hyprland
+      Type=Application
+  tags: [boot, sddm]
+
+- name: Note on activating RaBbLE SDDM theme
+  ansible.builtin.debug:
+    msg: >
+      SDDM configured. Active theme: breeze (stable fallback).
+      To test RaBbLE theme: sddm-greeter-qt6 --test-mode --theme /usr/share/sddm/themes/rabble
+      To activate: edit /etc/sddm.conf.d/30-theme.conf → Current=rabble, then restart sddm.
+  tags: [boot, sddm]

@@ -1,0 +1,44 @@
+---
+# ansible/roles/ui_ux/terminal/tasks/main.yml
+
+- name: Install terminal emulators
+  ansible.builtin.dnf:
+    name:
+      - foot            # primary — lightweight, Wayland-native
+      - kitty           # secondary — GPU-accelerated, feature-rich
+    state: present
+  tags: [ui_ux, terminal]
+
+- name: Create foot config directory
+  ansible.builtin.file:
+    path: "{{ rabble_config_home }}/foot"
+    state: directory
+    owner: "{{ rabble_user }}"
+    mode: "0755"
+  become: false
+  tags: [ui_ux, terminal]
+
+- name: Link foot config from dotfiles
+  ansible.builtin.file:
+    src: "{{ rabble_dotfiles_dir }}/shell/foot.ini"
+    dest: "{{ rabble_config_home }}/foot/foot.ini"
+    state: link
+    force: true
+    owner: "{{ rabble_user }}"
+  become: false
+  ignore_errors: true
+  tags: [ui_ux, terminal]
+
+- name: Install Nerd Fonts (FiraCode, JetBrainsMono)
+  ansible.builtin.dnf:
+    name:
+      - fira-code-fonts
+      - jetbrains-mono-fonts
+    state: present
+  tags: [ui_ux, terminal]
+
+- name: Refresh font cache
+  ansible.builtin.command: fc-cache -fv
+  become: false
+  changed_when: false
+  tags: [ui_ux, terminal]

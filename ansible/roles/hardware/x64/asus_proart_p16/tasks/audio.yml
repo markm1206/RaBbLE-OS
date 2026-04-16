@@ -1,0 +1,30 @@
+---
+# tasks/audio.yml
+- name: Install PipeWire audio stack
+  ansible.builtin.dnf:
+    name:
+      - pipewire
+      - pipewire-alsa
+      - pipewire-jack-audio-connection-kit
+      - pipewire-pulseaudio
+      - wireplumber
+      - pavucontrol
+      - helvum             # PipeWire patchbay GUI
+    state: present
+  tags: [hardware, audio]
+
+- name: Enable PipeWire user services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    enabled: yes
+    scope: user
+  loop:
+    - pipewire
+    - pipewire-pulse
+    - wireplumber
+  loop_control:
+    loop_var: item # Or change this to a new variable name
+  become: false
+  tags: [hardware, audio]

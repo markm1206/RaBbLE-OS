@@ -1,0 +1,12 @@
+---
+# ansible/playbooks/deploy-boot.yml
+- name: Deploy boot layer
+  hosts: all
+  become: true
+  roles:
+    - role: boot/grub2
+      tags: [boot, grub, tty]
+    - role: boot/plymouth
+      tags: [boot, plymouth]
+    - role: boot/session_manager
+      tags: [boot, sddm, session]

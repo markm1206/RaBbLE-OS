@@ -1,0 +1,197 @@
+/* dotfiles/shell/waybar/style.css
+ * =============================================================================
+ * RaBbLE — Waybar theme
+ * Palette source: ansible/inventory/group_vars/all.yml
+ *
+ *   --bg:      #0a0010   deep void
+ *   --primary: #ff2d78   hot magenta
+ *   --accent:  #00f5ff   electric cyan
+ *   --violet:  #bf5fff   soft violet
+ *   --pink:    #f7a8d4   soft pink
+ *   --text:    #e8d5ff   off-white / purple tint
+ *   --muted:   #8860aa   muted purple
+ *   --surface: #120025   elevated surface
+ * =============================================================================
+ */
+
+/* ── GTK Color Definitions ───────────────────────────────────────────────── */
+@define-color bg      #0a0010;
+@define-color primary #ff2d78;
+@define-color accent  #00f5ff;
+@define-color violet  #bf5fff;
+@define-color pink    #f7a8d4;
+@define-color text    #e8d5ff;
+@define-color muted   #8860aa;
+@define-color surface #120025;
+
+/* ── Global Reset ────────────────────────────────────────────────────────── */
+* {
+    font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
+    font-size:   13px;
+    font-weight: 500;
+    border:      none;
+    border-radius: 0;
+    min-height:  0;
+    padding:     0;
+}
+/* ── Bar base ─────────────────────────────────────────────────────────────── */
+window#waybar {
+    background-color: alpha(#0a0010, 0.90);
+    color:            #e8d5ff;
+    border-bottom:    1px solid alpha(#ff2d78, 0.35);
+    transition:       background-color 0.3s ease;
+}
+
+window#waybar.hidden {
+    opacity: 0.25;
+}
+
+/* ── Tooltip ──────────────────────────────────────────────────────────────── */
+tooltip {
+    background-color: #120025;
+    border:           1px solid alpha(#ff2d78, 0.5);
+    border-radius:    8px;
+    color:            #e8d5ff;
+}
+
+tooltip label {
+    color: #e8d5ff;
+}
+
+/* ── Shared module base ───────────────────────────────────────────────────── */
+.modules-left,
+.modules-center,
+.modules-right {
+    background: transparent;
+}
+
+#workspaces,
+#window,
+#clock,
+#network,
+#pulseaudio,
+#battery,
+#tray {
+    padding:    0 10px;
+    margin:     3px 2px;
+    border-radius: 6px;
+    color:      #e8d5ff;
+    background: alpha(#120025, 0.7);
+    transition: all 0.25s ease;
+}
+
+/* ── Workspaces ───────────────────────────────────────────────────────────── */
+#workspaces {
+    padding: 0 6px;
+}
+
+#workspaces button {
+    padding:      0 6px;
+    margin:       0 1px;
+    color:        #8860aa;
+    background:   transparent;
+    border:       none;
+    border-radius: 4px;
+    min-width:    24px;
+    transition:   all 0.2s ease;
+}
+
+#workspaces button:hover {
+    color:      #bf5fff;
+    background: alpha(#bf5fff, 0.15);
+}
+
+#workspaces button.active {
+    color:      #ff2d78;
+    background: alpha(#ff2d78, 0.18);
+    font-weight: bold;
+}
+
+#workspaces button.urgent {
+    color:      #00f5ff;
+    background: alpha(#00f5ff, 0.18);
+    animation:  blink 0.8s steps(1) infinite;
+}
+
+/* ── Window title ─────────────────────────────────────────────────────────── */
+#window {
+    color:     alpha(#e8d5ff, 0.75);
+    font-style: italic;
+    background: transparent;
+}
+
+/* ── Clock ────────────────────────────────────────────────────────────────── */
+
+/* ── Network ──────────────────────────────────────────────────────────────── */
+#network {
+    color: #00f5ff;
+}
+
+#network:hover {
+    background: alpha(#00f5ff, 0.1);
+    color:      #66ffff;
+}
+
+#network.disconnected {
+    color:      #8860aa;
+    background: alpha(#8860aa, 0.1);
+}
+
+/* ── Audio ────────────────────────────────────────────────────────────────── */
+#pulseaudio {
+    color: #bf5fff;
+}
+
+#pulseaudio:hover {
+    background: alpha(#bf5fff, 0.1);
+}
+
+#pulseaudio.muted {
+    color:      #8860aa;
+    background: alpha(#8860aa, 0.1);
+}
+
+/* ── Battery ──────────────────────────────────────────────────────────────── */
+#battery {
+    color: #e8d5ff;
+}
+
+#battery.charging,
+#battery.plugged {
+    color: #00f5ff;
+}
+
+#battery.full {
+    color: #00f5ff;
+}
+
+#battery.warning:not(.charging) {
+    color:      #f7a8d4;
+    background: alpha(#f7a8d4, 0.1);
+}
+
+#battery.critical:not(.charging) {
+    color:      #ff2d78;
+    background: alpha(#ff2d78, 0.18);
+    animation:  blink 0.8s steps(1) infinite;
+}
+
+/* ── Tray ─────────────────────────────────────────────────────────────────── */
+#tray {
+    background: transparent;
+}
+
+#tray > .passive {
+    -gtk-icon-effect: dim;
+}
+
+#tray > .needs-attention {
+    -gtk-icon-effect: highlight;
+    background:       alpha(#ff2d78, 0.2);
+    border-radius:    6px;
+}
+
+/* ── Blink animation (urgent / critical) ─────────────────────────────────── */
+@keyframes blink {
+    to { opacity: 0.4; }
+}

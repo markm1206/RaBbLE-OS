@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=RaBbLE
+Description=RaBbLE OS — animated boot splash with HiDPI scaling
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/rabble/assets
+ScriptFile=/usr/share/plymouth/themes/rabble/rabble.script

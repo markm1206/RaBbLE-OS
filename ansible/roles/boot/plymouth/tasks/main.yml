@@ -1,0 +1,163 @@
+---
+# ansible/roles/boot/plymouth/tasks/main.yml
+# =============================================================================
+# Plymouth — RaBbLE synthwave boot splash
+#
+# MERGE NOTES:
+#   BaBbLE deployed the .plymouth descriptor and .script entirely inline
+#   (no external file dependency). This is more reliable — it works on
+#   first run without needing generate-assets.sh to have been run first.
+#
+#   BaBbLE also used `plymouth-set-default-theme -R` (with -R flag) which
+#   rebuilds the initramfs inline rather than as a separate handler step.
+#   This guarantees the theme is active on next boot without a separate
+#   dracut run.
+#
+#   RaBbLE's asset-based approach is preserved as a fallback upgrade path:
+#   if theme assets exist in the repo, they are deployed on top.
+# =============================================================================
+
+- name: Install Plymouth and script plugin
+  ansible.builtin.dnf:
+    name:
+      - plymouth
+      - plymouth-core-libs
+      - plymouth-scripts
+      - plymouth-plugin-script
+      - plymouth-system-theme
+    state: present
+  tags: [boot, plymouth]
+
+- name: Create RaBbLE Plymouth theme directory
+  ansible.builtin.file:
+    path: /usr/share/plymouth/themes/rabble
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [boot, plymouth]
+
+- name: Deploy Plymouth theme descriptor
+  ansible.builtin.copy:
+    dest: /usr/share/plymouth/themes/rabble/rabble.plymouth
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Plymouth Theme]
+      Name=RaBbLE
+      Description=RaBbLE-OS synthwave boot splash — neon pulse on dark void
+      ModuleName=script
+
+      [script]
+      ImageDir=/usr/share/plymouth/themes/rabble
+      ScriptFile=/usr/share/plymouth/themes/rabble/rabble.script
+  tags: [boot, plymouth]
+
+- name: Deploy Plymouth animation script
+  ansible.builtin.copy:
+    dest: /usr/share/plymouth/themes/rabble/rabble.script
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # RaBbLE-OS Plymouth Script
+      # Synthwave boot splash: dark void + neon text + progress pulse
+      #
+      # ── Color palette ──────────────────────────────────────────────
+      # #0a0010 deep void, #ff2d78 magenta, #00f5ff cyan, #bf5fff violet
+
+      screen_width  = Window.GetWidth();
+      screen_height = Window.GetHeight();
+
+      # ── Background ────────────────────────────────────────────────
+      Window.SetBackgroundTopColor(0.04, 0.00, 0.06);     # #0a0010
+      Window.SetBackgroundBottomColor(0.07, 0.00, 0.15);  # #120025
+
+      # ── RaBbLE wordmark ────────────────────────────────────────────
+      logo = Image.Text("RaBbLE", 1.0, 0.18, 0.47, 1.0, "Sans Bold 28");
+      logo_sprite = Sprite(logo);
+      logo_sprite.SetPosition(
+        (screen_width  - logo.GetWidth())  / 2,
+        screen_height * 0.70
+      );
+      logo_sprite.SetOpacity(0.0);
+
+      subtitle = Image.Text(
+        "Low Entropy. Infinite Resonance.",
+        0.56, 0.38, 0.67, 1.0, "Sans 12"
+      );
+      sub_sprite = Sprite(subtitle);
+      sub_sprite.SetPosition(
+        (screen_width - subtitle.GetWidth()) / 2,
+        screen_height * 0.77
+      );
+      sub_sprite.SetOpacity(0.0);
+
+      # ── Progress bar (neon magenta) ────────────────────────────────
+      progress_sprite = Sprite();
+      progress_sprite.SetPosition(screen_width * 0.15, screen_height * 0.88);
+
+      tick = 0;
+
+      fun RefreshCallback() {
+        tick = tick + 1;
+        # Fade in logo over first 40 ticks
+        if (tick <= 40) {
+          opacity = tick / 40.0;
+          logo_sprite.SetOpacity(opacity);
+          sub_sprite.SetOpacity(opacity * 0.8);
+        }
+      }
+      Plymouth.SetRefreshFunction(RefreshCallback);
+
+      fun progress_callback(duration, progress) {
+        bar_width = Math.Int((screen_width * 0.70) * progress);
+        if (bar_width < 2) { bar_width = 2; }
+        bar = Image.New(bar_width, 3);
+        bar.SetAsAlpha(1.0);
+        progress_sprite.SetImage(bar);
+      }
+      Plymouth.SetBootProgressFunction(progress_callback);
+
+      fun QuitCallback() {
+        logo_sprite.SetOpacity(0);
+        sub_sprite.SetOpacity(0);
+        progress_sprite.SetOpacity(0);
+      }
+      Plymouth.SetQuitFunction(QuitCallback);
+  notify: Set Plymouth theme and rebuild initramfs
+  tags: [boot, plymouth]
+
+# If repo has generated theme assets (PNG logo, spinner frames), deploy them.
+# These are optional — the inline script above works without them.
+- name: Check if theme asset directory exists in repo
+  ansible.builtin.stat:
+    path: "{{ rabble_themes_dir }}/plymouth/rabble/assets"
+  register: _ply_assets
+  tags: [boot, plymouth]
+
+- name: Deploy Plymouth theme assets if present in repo
+  ansible.builtin.copy:
+    src: "{{ rabble_themes_dir }}/plymouth/rabble/assets/"
+    dest: /usr/share/plymouth/themes/rabble/assets/
+    owner: root
+    group: root
+    mode: "0644"
+  when: _ply_assets.stat.exists and _ply_assets.stat.isdir
+  notify: Set Plymouth theme and rebuild initramfs
+  tags: [boot, plymouth]
+
+- name: Get current Plymouth default theme
+  ansible.builtin.command: plymouth-set-default-theme
+  register: _ply_current
+  changed_when: false
+  failed_when: false
+  tags: [boot, plymouth]
+
+- name: Set RaBbLE as active Plymouth theme and rebuild initramfs
+  # -R flag rebuilds initramfs inline — theme is active on next boot.
+  # Only runs if theme is not already set (idempotent).
+  ansible.builtin.command: plymouth-set-default-theme -R rabble
+  when: _ply_current.stdout | trim != 'rabble'
+  tags: [boot, plymouth]

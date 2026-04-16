@@ -1,0 +1,98 @@
+---
+# ansible/roles/hardware/x64/asus_proart_p16/tasks/amd_gfx.yml
+# =============================================================================
+# AMD Radeon 890M (RDNA 3.5 gfx1150) — primary display GPU
+#
+# MERGE NOTES:
+#   BaBbLE added mesa-va-drivers, mesa-vdpau-drivers, rocm-opencl, and
+#   amd-gpu-firmware (ensures latest iGPU microcode). It also deployed
+#   /etc/profile.d/rabble-amdgpu.sh to force the AMD Vulkan ICD and
+#   radeonsi VA-API backend — important on a hybrid system where the NVIDIA
+#   ICD could otherwise take precedence after akmod-nvidia is installed.
+# =============================================================================
+
+- name: Install Mesa / Vulkan / VA-API drivers for AMD
+  ansible.builtin.dnf:
+    name:
+      - mesa-dri-drivers
+      - mesa-vulkan-drivers
+      - vulkan-loader
+      - vulkan-tools
+      - mesa-va-drivers           # VA-API hardware video decode
+      - mesa-vdpau-drivers        # VDPAU
+      - libva-utils               # vainfo — verify VA-API is working
+      - radeontop                 # AMD GPU monitoring
+      - rocm-opencl               # OpenCL for iGPU compute
+    state: present
+  tags: [hardware, amd]
+
+- name: Install 32-bit Mesa libs (WINE / gaming compat)
+  ansible.builtin.dnf:
+    name:
+      - mesa-dri-drivers.i686
+      - mesa-vulkan-drivers.i686
+    state: present
+  tags: [hardware, amd]
+
+- name: Install AMD firmware (latest iGPU microcode)
+  ansible.builtin.dnf:
+    name:
+      - linux-firmware
+      - amd-gpu-firmware
+    state: present
+  tags: [hardware, amd]
+
+- name: Deploy AMD GPU environment profile
+  # Forces AMD Vulkan ICD and radeonsi VA-API on a hybrid system.
+  # Without this, NVIDIA ICD may be picked after akmod-nvidia installs.
+  ansible.builtin.copy:
+    dest: /etc/profile.d/rabble-amdgpu.sh
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # RaBbLE: AMD 890M — force AMD as default Vulkan + VA-API renderer
+      # On hybrid (AMD+NVIDIA) systems the NVIDIA ICD can take precedence.
+      # This ensures all desktop apps use the iGPU unless rabble-gpu is used.
+      export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.x86_64.json
+      export LIBVA_DRIVER_NAME=radeonsi
+  tags: [hardware, amd]
+
+- name: Deploy AMD kernel module options
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/amdgpu.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # RaBbLE: amdgpu options for Radeon 890M
+      options amdgpu ppfeaturemask=0xffffffff
+      options amdgpu dpm=1
+      options amdgpu audio=1
+      options amdgpu deep_color=1
+  notify: Rebuild initramfs
+  tags: [hardware, amd]
+
+- name: Deploy udev rule for GPU render node (unprivileged access)
+  ansible.builtin.copy:
+    dest: /etc/udev/rules.d/70-amdgpu-render.rules
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      KERNEL=="renderD*", SUBSYSTEM=="drm", GROUP="render", MODE="0666"
+  notify:
+    - Reload udev rules
+    - Trigger udev events
+  tags: [hardware, amd]
+
+- name: Verify amdgpu module is loaded
+  ansible.builtin.command: lsmod
+  register: _lsmod
+  changed_when: false
+  tags: [hardware, amd]
+
+- name: Report amdgpu status
+  ansible.builtin.debug:
+    msg: "amdgpu module: {{ 'LOADED' if 'amdgpu' in _lsmod.stdout else 'NOT FOUND — check: dmesg | grep amdgpu' }}"
+  tags: [hardware, amd]

@@ -1,0 +1,175 @@
+---
+# ansible/roles/core/tasks/main.yml
+# =============================================================================
+# Core / Base System — runs first on all targets
+#
+# MERGE NOTES:
+#   BaBbLE added DNF optimisation (fastestmirror, parallel downloads),
+#   fstrim timer (SSD health), lm_sensors, nvtop, powertop, yq, p7zip,
+#   and a system locale set via localectl. These are all good additions.
+#   RaBbLE's package list is merged with BaBbLE's, deduped.
+# =============================================================================
+
+# ── DNF optimisation ─────────────────────────────────────────────────────────
+- name: Optimise DNF configuration
+  ansible.builtin.blockinfile:
+    path: /etc/dnf/dnf.conf
+    marker: "# {mark} RaBbLE DNF CONFIG"
+    block: |
+      fastestmirror=True
+      max_parallel_downloads=10
+      defaultyes=True
+      keepcache=False
+      deltarpm=True
+  tags: [core, dnf]
+
+# ── Repos ─────────────────────────────────────────────────────────────────────
+- name: Enable RPM Fusion Free repo
+  ansible.builtin.dnf:
+    name: "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-{{ ansible_distribution_major_version }}.noarch.rpm"
+    state: present
+    disable_gpg_check: true
+  tags: [core, repos]
+
+- name: Enable RPM Fusion Non-Free repo
+  ansible.builtin.dnf:
+    name: "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-{{ ansible_distribution_major_version }}.noarch.rpm"
+    state: present
+    disable_gpg_check: true
+  tags: [core, repos]
+
+# ── System upgrade ────────────────────────────────────────────────────────────
+- name: Upgrade all base packages
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+    update_cache: true
+  tags: [core, upgrade]
+
+# ── Core packages ─────────────────────────────────────────────────────────────
+- name: Install core system packages
+  ansible.builtin.dnf:
+    name:
+      # Shell and navigation
+      - bash
+      - zsh
+      - git
+      - git-lfs
+      - curl
+      - wget
+      - rsync
+      - unzip
+      - p7zip
+      - xz
+      - tar
+      # Search and text tools
+      - jq
+      - yq
+      - ripgrep
+      - fd-find
+      - fzf
+      - bat
+      - eza
+      - zoxide
+      # System monitoring
+      - htop
+      - btop
+      - fastfetch
+      - lm_sensors
+      - nvtop
+      - powertop
+      # Filesystem
+      - btrfs-progs
+      - snapper
+      # Network
+      - NetworkManager
+      - nm-connection-editor
+      # Build tools
+      - gcc
+      - gcc-c++
+      - make
+      - cmake
+      - pkg-config
+      - ninja-build
+      # Python
+      - python3
+      - python3-pip
+      - python3-devel
+      - pipx
+      # Fonts (base — nerd fonts in aesthetics role)
+      - terminus-fonts
+      - terminus-fonts-console
+      - fontawesome-fonts
+      - google-noto-fonts-common
+      - google-noto-emoji-fonts
+      - jetbrains-mono-fonts
+    state: present
+  tags: [core, packages]
+
+# ── Locale ────────────────────────────────────────────────────────────────────
+- name: Set system locale (UTF-8 — fixes SDDM locale warning)
+  ansible.builtin.command:
+    cmd: localectl set-locale LANG={{ system_locale | default('en_US.UTF-8') }}
+  changed_when: false
+  tags: [core, system]
+
+# ── Flatpak ───────────────────────────────────────────────────────────────────
+- name: Ensure Flatpak is installed
+  ansible.builtin.dnf:
+    name: flatpak
+    state: present
+  tags: [core, flatpak]
+
+- name: Add Flathub remote (system-wide)
+  ansible.builtin.command:
+    cmd: flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+  changed_when: false
+  tags: [core, flatpak]
+
+# ── User groups ───────────────────────────────────────────────────────────────
+- name: Ensure user is in required groups
+  ansible.builtin.user:
+    name: "{{ rabble_user }}"
+    groups:
+      - wheel
+      - audio
+      - video
+      - input
+      - render
+    append: true
+  tags: [core, user]
+
+# ── SSD health ────────────────────────────────────────────────────────────────
+- name: Enable fstrim.timer (periodic SSD TRIM)
+  ansible.builtin.systemd:
+    name: fstrim.timer
+    enabled: true
+    state: started
+  tags: [core, system]
+
+# ── XDG directories ───────────────────────────────────────────────────────────
+- name: Create XDG config directories
+  ansible.builtin.file:
+    path: "{{ rabble_config_home }}/{{ item }}"
+    state: directory
+    owner: "{{ rabble_user }}"
+    mode: "0755"
+  loop:
+    - hypr
+    - quickshell
+    - foot
+    - mako
+    - fuzzel
+    - environment.d
+  become: false
+  tags: [core, xdg]
+
+# ── Session environment vars ──────────────────────────────────────────────────
+- name: Deploy XDG/Wayland environment vars
+  ansible.builtin.template:
+    src: xdg-environment.conf.j2
+    dest: "{{ rabble_config_home }}/environment.d/rabble.conf"
+    owner: "{{ rabble_user }}"
+    mode: "0644"
+  become: false
+  tags: [core, env]

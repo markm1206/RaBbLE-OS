@@ -1,0 +1,39 @@
+---
+# ansible/roles/hardware/x64/asus_proart_p16/tasks/supergfx.yml
+# supergfxctl — ASUS hybrid graphics switching daemon
+
+- name: Install supergfxctl
+  ansible.builtin.dnf:
+    name: supergfxctl
+    state: present
+  tags: [hardware, supergfx]
+
+- name: Deploy supergfxctl config
+  ansible.builtin.template:
+    src: supergfxd.conf.j2
+    dest: /etc/supergfxd.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart supergfxd
+  tags: [hardware, supergfx]
+
+- name: Enable and start supergfxd
+  ansible.builtin.systemd:
+    name: supergfxd
+    enabled: true
+    state: started
+  tags: [hardware, supergfx]
+
+- name: Install switcheroo-control (per-app GPU selection)
+  ansible.builtin.dnf:
+    name: switcheroo-control
+    state: present
+  tags: [hardware, supergfx]
+
+- name: Enable switcheroo-control
+  ansible.builtin.systemd:
+    name: switcheroo-control
+    enabled: true
+    state: started
+  tags: [hardware, supergfx]

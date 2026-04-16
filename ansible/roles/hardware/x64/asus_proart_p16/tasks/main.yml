@@ -1,0 +1,40 @@
+---
+# ansible/roles/hardware/x64/asus_proart_p16/tasks/main.yml
+# =============================================================================
+# ASUS ProArt P16 H7606WV — Hardware subtask dispatcher
+#
+# MERGE NOTES:
+#   BaBbLE added nvidia.yml (the ProArt P16 has RTX 4060 Max-Q, not RX 7700S
+#   as originally spec'd in RaBbLE). BaBbLE also had a more complete npu.yml
+#   (npu_xdna2.yml) with the memlock fix, COPR path, and XRT symlink fix.
+#   Both are pulled in here.
+# =============================================================================
+
+- name: Firmware update tools
+  ansible.builtin.include_tasks: firmware.yml
+
+- name: AMD iGPU (Radeon 890M)
+  ansible.builtin.include_tasks: amd_gfx.yml
+
+- name: NVIDIA dGPU (RTX 4060 Max-Q — Optimus/PRIME)
+  ansible.builtin.include_tasks: nvidia.yml
+  when: hardware.dgpu is defined and 'nvidia' in hardware.dgpu
+
+- name: ASUS platform (supergfxctl + asusctl)
+  ansible.builtin.include_tasks: supergfx.yml
+  when: hardware.platform | default('') == 'asus_laptop'
+
+- name: ASUS control daemon
+  ansible.builtin.include_tasks: asusctl.yml
+  when: hardware.platform | default('') == 'asus_laptop'
+
+- name: AMD XDNA2 NPU userspace
+  ansible.builtin.include_tasks: npu.yml
+  when: hardware.npu | default('') == 'amd_xdna2'
+
+- name: Power management
+  ansible.builtin.include_tasks: power.yml
+
+#Audio task needs fixing, using hacky method to disable it
+# - name: PipeWire audio
+#   ansible.builtin.include_tasks: audio.yml

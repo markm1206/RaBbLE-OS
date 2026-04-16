@@ -1,0 +1,209 @@
+---
+# ansible/roles/boot/grub2/tasks/main.yml
+# =============================================================================
+# Grub2 — RaBbLE theme + HiDPI + TTY font
+#
+# MERGE NOTES:
+#   BaBbLE used lineinfile per-key — this is more robust than deploying a
+#   full /etc/default/grub template, because it preserves any existing
+#   distro-specific lines (BLS config, rescue entries, etc.) rather than
+#   overwriting them entirely.
+#
+#   BaBbLE also correctly used 1280x800 as the GRUB gfxmode — NOT native
+#   3840x2400. At native resolution GRUB text is unreadable. The kernel
+#   cmdline is kept at native res; the GRUB menu itself runs at 1280x800.
+#
+#   The Plymouth theme is deployed inline here (no external file dependency)
+#   using BaBbLE's proven approach, so it works even before theme assets
+#   are generated.
+#
+#   TTY fix: vconsole.conf sets terminus font to make TTY readable on HiDPI.
+# =============================================================================
+
+- name: Install grub2 tools, terminus fonts, and grub2-pc/efi
+  ansible.builtin.dnf:
+    name:
+      - grub2-tools
+      - grub2-tools-extra
+      - terminus-fonts
+      - terminus-fonts-console
+    state: present
+  tags: [boot, grub, tty]
+
+# ── TTY: vconsole HiDPI font ──────────────────────────────────────────────────
+- name: Configure vconsole for HiDPI TTY (terminus font)
+  ansible.builtin.template:
+    src: vconsole.conf.j2
+    dest: /etc/vconsole.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Rebuild initramfs
+  tags: [boot, tty]
+
+# ── GRUB: set each key with lineinfile (preserves existing config lines) ──────
+# Using BaBbLE's lineinfile strategy — safer than full template replace.
+
+- name: Set GRUB_TIMEOUT
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_TIMEOUT='
+    line: "GRUB_TIMEOUT={{ rabble_grub_timeout | default(3) }}"
+  notify: Rebuild grub config
+  tags: [boot, grub]
+
+- name: Set GRUB_TIMEOUT_STYLE to menu (ensure menu is visible)
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^#?GRUB_TIMEOUT_STYLE='
+    line: 'GRUB_TIMEOUT_STYLE=menu'
+  notify: Rebuild grub config
+  tags: [boot, grub]
+
+- name: Set GRUB_TERMINAL_OUTPUT to gfxterm (required for themed display)
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^#?GRUB_TERMINAL_OUTPUT='
+    line: 'GRUB_TERMINAL_OUTPUT="gfxterm"'
+  notify: Rebuild grub config
+  tags: [boot, grub]
+
+- name: Set GRUB_GFXMODE to readable resolution
+  # NOTE: Do NOT use native 3840x2400 here — GRUB text becomes microscopic.
+  # Use a readable resolution for the boot menu; kernel keeps native res
+  # via GRUB_GFXPAYLOAD_LINUX=keep (set below).
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^#?GRUB_GFXMODE='
+    line: "GRUB_GFXMODE={{ rabble_grub_gfxmode | default('1280x800x32,auto') }}"
+  notify: Rebuild grub config
+  tags: [boot, grub]
+
+- name: Set GRUB_GFXPAYLOAD_LINUX to keep (pass framebuffer res to kernel)
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^#?GRUB_GFXPAYLOAD_LINUX='
+    line: "GRUB_GFXPAYLOAD_LINUX={{ rabble_grub_gfxpayload | default('keep') }}"
+  notify: Rebuild grub config
+  tags: [boot, grub]
+
+- name: Set GRUB_CMDLINE_LINUX (kernel parameters)
+  # Includes: Plymouth, blacklist nouveau, s2idle for AMD Strix Point,
+  # NVIDIA VRAM preservation, efifb:off for Plymouth handoff.
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_CMDLINE_LINUX='
+    line: >-
+      GRUB_CMDLINE_LINUX="rhgb quiet splash
+      plymouth.enable=1 rd.plymouth=1
+      loglevel=3 udev.log_level=3
+      systemd.show_status=auto
+      rd.driver.blacklist=nouveau modprobe.blacklist=nouveau
+      video=efifb:off
+      mem_sleep_default=s2idle
+      nvidia.NVreg_PreserveVideoMemoryAllocations=1
+      nvidia.NVreg_TemporaryFilePath=/tmp
+      {{ rabble_grub_extra_cmdline | default('') }}"
+  notify: Rebuild grub config
+  tags: [boot, grub]
+
+# ── GRUB: theme ──────────────────────────────────────────────────────────────
+- name: Create GRUB theme directory
+  ansible.builtin.file:
+    path: /boot/grub2/themes/rabble
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [boot, grub]
+
+- name: Check if full theme assets exist in repo
+  ansible.builtin.stat:
+    path: "{{ rabble_themes_dir }}/grub2/rabble/theme.txt"
+  register: _grub_theme_exists
+  tags: [boot, grub]
+
+- name: Deploy full GRUB theme from repo (if assets present)
+  ansible.builtin.copy:
+    src: "{{ rabble_themes_dir }}/grub2/rabble/"
+    dest: /boot/grub2/themes/rabble/
+    owner: root
+    group: root
+    mode: "0644"
+  when: _grub_theme_exists.stat.exists
+  notify: Rebuild grub config
+  tags: [boot, grub]
+
+- name: Deploy minimal inline fallback theme (if repo assets not yet generated)
+  # This gives a working, styled GRUB menu immediately — no asset generation needed.
+  ansible.builtin.copy:
+    dest: /boot/grub2/themes/rabble/theme.txt
+    owner: root
+    group: root
+    mode: "0644"
+    force: false   # Don't overwrite if full theme was just deployed above
+    content: |
+      # RaBbLE-OS GRUB Theme — inline synthwave fallback
+      # Run themes/grub2/rabble/generate-assets.sh for full graphical theme
+      title-text: ""
+      desktop-color: "#0a0010"
+      terminal-font: "Unifont Regular 18"
+
+      + label {
+        top = 20%
+        left = 0
+        width = 100%
+        height = 60
+        text = "RaBbLE"
+        font = "Unifont Regular 28"
+        color = "#ff2d78"
+        align = "center"
+      }
+
+      + label {
+        top = 30%
+        left = 0
+        width = 100%
+        height = 30
+        text = "Low Entropy. Infinite Resonance."
+        font = "Unifont Regular 14"
+        color = "#bf5fff"
+        align = "center"
+      }
+
+      + boot_menu {
+        left = 15%
+        top = 38%
+        width = 70%
+        height = 42%
+        item_font = "Unifont Regular 18"
+        item_color = "#e8d5ff"
+        selected_item_color = "#ffffff"
+        selected_item_pixmap_style = ""
+        item_height = 40
+        item_padding = 12
+        item_spacing = 5
+        scrollbar = true
+        scrollbar_width = 4
+      }
+
+      + progress_bar {
+        id = "__timeout__"
+        left = 15%
+        top = 85%
+        width = 70%
+        height = 4
+        fg_color = "#ff2d78"
+        bg_color = "#1a0040"
+        border_color = "#2a0060"
+      }
+  notify: Rebuild grub config
+  tags: [boot, grub]
+
+- name: Set GRUB_THEME path in /etc/default/grub
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^#?GRUB_THEME='
+    line: 'GRUB_THEME="/boot/grub2/themes/rabble/theme.txt"'
+  notify: Rebuild grub config
+  tags: [boot, grub]

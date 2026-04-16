@@ -1,0 +1,141 @@
+// =============================================================================
+// RaBbLE Plymouth Theme Script
+// themes/plymouth/rabble/rabble.script
+//
+// Assets (place in assets/ directory):
+//   logo.png      — RaBbLE logo, 256×256 or larger (will be scaled)
+//   bg.png        — background image (optional — solid color used if absent)
+//   spinner/      — frame-NN.png animation frames (16–32 frames recommended)
+//
+// HiDPI: scale factor is detected at runtime from screen width.
+// Reference design width: 1920px → scale=1.0; 3840px → scale=2.0
+// =============================================================================
+
+// ── Screen metrics ────────────────────────────────────────────────────────────
+screen_width  = Window.GetWidth();
+screen_height = Window.GetHeight();
+screen_x      = Window.GetX();
+screen_y      = Window.GetY();
+
+cx = screen_x + screen_width  / 2;
+cy = screen_y + screen_height / 2;
+
+// HiDPI scale: 1.0 at 1920w, 2.0 at 3840w
+scale = Math.Max(1.0, screen_width / 1920.0);
+
+// ── Palette ───────────────────────────────────────────────────────────────────
+// All color values below are for reference — Plymouth script uses image sprites,
+// not direct color drawing. See generate-assets.sh to create PNG assets.
+
+// ── Background ────────────────────────────────────────────────────────────────
+bg_image = Image("bg.png");
+if (bg_image)
+{
+    bg = Sprite(bg_image.Scale(screen_width, screen_height));
+    bg.SetX(screen_x);
+    bg.SetY(screen_y);
+    bg.SetZ(-100);
+}
+else
+{
+    // Solid dark fallback via a 1×1 scaled rectangle
+    bg = Sprite();
+    bg.SetX(screen_x);
+    bg.SetY(screen_y);
+    bg.SetZ(-100);
+}
+
+// ── Logo ──────────────────────────────────────────────────────────────────────
+logo_image = Image("logo.png");
+if (logo_image)
+{
+    logo_w = Math.Int(logo_image.GetWidth()  * scale * 0.8);
+    logo_h = Math.Int(logo_image.GetHeight() * scale * 0.8);
+
+    logo_scaled = logo_image.Scale(logo_w, logo_h);
+    logo_sprite = Sprite(logo_scaled);
+    logo_sprite.SetX(cx - logo_w / 2);
+    logo_sprite.SetY(cy - logo_h / 2 - Math.Int(40 * scale));
+    logo_sprite.SetZ(10);
+    logo_sprite.SetOpacity(0);
+}
+
+// ── Spinner (frame-based animation) ───────────────────────────────────────────
+spinner_frame_count = 24;    // how many frame-NN.png files exist in assets/spinner/
+spinner_frames = [];
+spinner_size   = Math.Int(32 * scale);
+
+for (i = 0; i < spinner_frame_count; i++)
+{
+    frame_name = "spinner/frame-" + String.Format("%02d", i) + ".png";
+    img = Image(frame_name);
+    if (img)
+    {
+        spinner_frames[i] = img.Scale(spinner_size, spinner_size);
+    }
+}
+
+spinner_sprite = Sprite();
+spinner_sprite.SetX(cx - spinner_size / 2);
+spinner_sprite.SetY(cy + Math.Int(logo_h / 2) + Math.Int(24 * scale));
+spinner_sprite.SetZ(10);
+
+current_frame = 0;
+tick          = 0;
+fade_in_done  = false;
+
+// ── Password dialog (if disk encryption prompt appears) ───────────────────────
+dialog_image  = Image("dialog.png");
+
+fun DisplayPasswordCallback(action, bullets)
+{
+    if (dialog_image)
+    {
+        dlg_sprite = Sprite(dialog_image.Scale(
+            Math.Int(dialog_image.GetWidth()  * scale),
+            Math.Int(dialog_image.GetHeight() * scale)
+        ));
+        dlg_sprite.SetX(cx - (dialog_image.GetWidth() * scale / 2));
+        dlg_sprite.SetY(cy + Math.Int(120 * scale));
+        dlg_sprite.SetZ(20);
+    }
+}
+
+Plymouth.SetDisplayPasswordFunction(DisplayPasswordCallback);
+
+// ── Main refresh loop ──────────────────────────────────────────────────────────
+fun RefreshCallback()
+{
+    tick++;
+
+    // Fade-in logo over first 30 ticks (~0.5s at 60hz)
+    if (!fade_in_done)
+    {
+        opacity = Math.Min(1.0, tick / 30.0);
+        if (logo_sprite)  { logo_sprite.SetOpacity(opacity); }
+        if (opacity >= 1.0) { fade_in_done = true; }
+    }
+
+    // Advance spinner frame every 2 ticks (~30fps spin)
+    if (tick % 2 == 0)
+    {
+        if (spinner_frames[current_frame])
+        {
+            spinner_sprite.SetImage(spinner_frames[current_frame]);
+        }
+        current_frame = (current_frame + 1) % spinner_frame_count;
+    }
+}
+
+Plymouth.SetRefreshFunction(RefreshCallback);
+
+// ── Boot-done / quit ──────────────────────────────────────────────────────────
+fun QuitCallback()
+{
+    // Fade out everything
+    if (logo_sprite)   { logo_sprite.SetOpacity(0);   }
+    if (spinner_sprite){ spinner_sprite.SetOpacity(0); }
+    if (bg)            { bg.SetOpacity(0);             }
+}
+
+Plymouth.SetQuitFunction(QuitCallback);

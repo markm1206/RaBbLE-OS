@@ -1,0 +1,26 @@
+# {{ ansible_managed }}
+# /etc/sddm.conf.d/rabble.conf
+
+[General]
+DisplayServer=wayland
+GreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell
+DefaultSession=hyprland.desktop
+HaltCommand=/usr/bin/systemctl poweroff
+RebootCommand=/usr/bin/systemctl reboot
+Numlock=on
+
+[Theme]
+Current=rabble
+ThemeDir=/usr/share/sddm/themes
+
+[Wayland]
+CompositorCommand=kwin_wayland --drm --no-lockscreen --no-global-shortcuts
+EnableHiDPI={{ 'true' if rabble_hidpi_scale | int > 1 else 'false' }}
+
+[Users]
+HideUsers=
+HideShells=/bin/false:/usr/bin/false:/sbin/nologin
+MaximumUid=60000
+MinimumUid=1000
+RememberLastSession=true
+RememberLastUser=true

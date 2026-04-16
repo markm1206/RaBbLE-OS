@@ -1,0 +1,34 @@
+---
+# ansible/roles/ui_ux/shell/bash/tasks/main.yml
+# Installs bash + starship. Dotfiles are deployed by deploy-dotfiles.yml.
+
+- name: Install bash and bash-completion
+  ansible.builtin.dnf:
+    name:
+      - bash
+      - bash-completion
+    state: present
+  tags: [ui_ux, shell, bash]
+
+- name: Install starship prompt
+  ansible.builtin.shell: |
+    curl -sS https://starship.rs/install.sh | sh -s -- --yes --bin-dir /usr/local/bin
+  args:
+    creates: /usr/local/bin/starship
+  tags: [ui_ux, shell, bash]
+
+- name: Create bash state directory
+  ansible.builtin.file:
+    path:  "{{ rabble_home }}/.local/state/bash"
+    state: directory
+    owner: "{{ rabble_user }}"
+    mode:  "0755"
+  become: false
+  tags: [ui_ux, shell, bash]
+
+- name: Remind operator to deploy bash dotfiles
+  ansible.builtin.debug:
+    msg: >
+      Bash + starship installed. Run deploy-dotfiles.yml to copy
+      .bashrc, .bash_profile, and aliases.sh into ~/ and ~/.config/.
+  tags: [ui_ux, shell, bash]

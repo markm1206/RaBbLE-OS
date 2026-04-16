@@ -1,0 +1,23 @@
+---
+# ansible/roles/hardware/x64/asus_proart_p16/tasks/firmware.yml
+
+- name: Install fwupd and firmware update tools
+  ansible.builtin.dnf:
+    name:
+      - fwupd
+      - fwupd-plugin-flashrom
+    state: present
+  tags: [hardware, firmware]
+
+- name: Enable fwupd service
+  ansible.builtin.systemd:
+    name: fwupd
+    enabled: true
+    state: started
+  tags: [hardware, firmware]
+
+- name: Refresh firmware metadata
+  ansible.builtin.command: fwupdmgr refresh --force
+  changed_when: false
+  ignore_errors: true
+  tags: [hardware, firmware]

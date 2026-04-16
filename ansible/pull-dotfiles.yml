@@ -1,0 +1,142 @@
+---
+# ansible/playbooks/pull-dotfiles.yml
+# =============================================================================
+# Pull locally-edited dotfiles back into the repo.
+#
+# Use this when you edit a deployed file directly (e.g. you tweak
+# ~/.config/hypr/conf.d/look.conf in place) and want to commit
+# those changes back to the RaBbLE repo.
+#
+# What it does:
+#   - Diffs every deployed file against its repo source
+#   - Copies any changed deployed file back into dotfiles/
+#   - Reports exactly what changed (dry-run by default)
+#
+# Usage:
+#   Dry-run (see what would change, touch nothing):
+#     ansible-playbook -i ansible/inventory/hosts.yml \
+#       ansible/playbooks/pull-dotfiles.yml
+#
+#   Actually pull changes into the repo:
+#     ansible-playbook -i ansible/inventory/hosts.yml \
+#       ansible/playbooks/pull-dotfiles.yml -e rabble_pull=true
+#
+#   Via bootstrap:
+#     bootstrap.sh → Dev Tools → Pull dotfiles back to repo
+# =============================================================================
+
+- name: Pull locally-edited dotfiles back into repo
+  hosts: all
+  become: false
+
+  vars:
+    df:      "{{ rabble_repo_root }}/dotfiles"
+    cfg:     "{{ ansible_env.HOME }}/.config"
+    home:    "{{ ansible_env.HOME }}"
+    do_pull: "{{ rabble_pull | default(false) | bool }}"
+
+  tasks:
+
+    - name: Announce mode
+      ansible.builtin.debug:
+        msg: >
+          {{ 'PULL MODE: changed files will be copied into ' + df
+             if do_pull else
+             'DRY-RUN MODE: showing diffs only. Re-run with -e rabble_pull=true to apply.' }}
+
+    # ── Build file map (deployed → repo) ──────────────────────────────────────
+    # Each entry: { deployed: <live path>, repo: <dotfiles/ path> }
+    - name: Set dotfile map
+      ansible.builtin.set_fact:
+        dotfile_map:
+          # Hyprland
+          - { deployed: "{{ cfg }}/hypr/hyprland.conf",            repo: "{{ df }}/hyprland/hyprland.conf" }
+          - { deployed: "{{ cfg }}/hypr/conf.d/animations.conf",   repo: "{{ df }}/hyprland/conf.d/animations.conf" }
+          - { deployed: "{{ cfg }}/hypr/conf.d/autostart.conf",    repo: "{{ df }}/hyprland/conf.d/autostart.conf" }
+          - { deployed: "{{ cfg }}/hypr/conf.d/env.conf",          repo: "{{ df }}/hyprland/conf.d/env.conf" }
+          - { deployed: "{{ cfg }}/hypr/conf.d/input.conf",        repo: "{{ df }}/hyprland/conf.d/input.conf" }
+          - { deployed: "{{ cfg }}/hypr/conf.d/keybinds.conf",     repo: "{{ df }}/hyprland/conf.d/keybinds.conf" }
+          - { deployed: "{{ cfg }}/hypr/conf.d/look.conf",         repo: "{{ df }}/hyprland/conf.d/look.conf" }
+          - { deployed: "{{ cfg }}/hypr/conf.d/windowrules.conf",  repo: "{{ df }}/hyprland/conf.d/windowrules.conf" }
+          - { deployed: "{{ cfg }}/hypr/conf.d/workspaces.conf",   repo: "{{ df }}/hyprland/conf.d/workspaces.conf" }
+          - { deployed: "{{ cfg }}/hypr/scripts/screenshot.sh",    repo: "{{ df }}/hyprland/scripts/screenshot.sh" }
+          - { deployed: "{{ cfg }}/hypr/scripts/help.sh",          repo: "{{ df }}/hyprland/scripts/help.sh" }
+          - { deployed: "{{ cfg }}/hypr/scripts/hyprlock.conf",    repo: "{{ df }}/hyprland/scripts/hyprlock.conf" }
+          # Quickshell
+          - { deployed: "{{ cfg }}/quickshell/shell.qml",                        repo: "{{ df }}/quickshell/shell.qml" }
+          - { deployed: "{{ cfg }}/quickshell/bar/RaBbLEBar.qml",               repo: "{{ df }}/quickshell/bar/RaBbLEBar.qml" }
+          - { deployed: "{{ cfg }}/quickshell/bar/WorkspaceBar.qml",            repo: "{{ df }}/quickshell/bar/WorkspaceBar.qml" }
+          - { deployed: "{{ cfg }}/quickshell/bar/ClockWidget.qml",             repo: "{{ df }}/quickshell/bar/ClockWidget.qml" }
+          - { deployed: "{{ cfg }}/quickshell/bar/AudioWidget.qml",             repo: "{{ df }}/quickshell/bar/AudioWidget.qml" }
+          - { deployed: "{{ cfg }}/quickshell/bar/BatteryWidget.qml",           repo: "{{ df }}/quickshell/bar/BatteryWidget.qml" }
+          - { deployed: "{{ cfg }}/quickshell/bar/NetworkWidget.qml",           repo: "{{ df }}/quickshell/bar/NetworkWidget.qml" }
+          - { deployed: "{{ cfg }}/quickshell/bar/WindowTitle.qml",             repo: "{{ df }}/quickshell/bar/WindowTitle.qml" }
+          - { deployed: "{{ cfg }}/quickshell/bar/BarSeparator.qml",            repo: "{{ df }}/quickshell/bar/BarSeparator.qml" }
+          - { deployed: "{{ cfg }}/quickshell/bar/SystemTrayWidget.qml",        repo: "{{ df }}/quickshell/bar/SystemTrayWidget.qml" }
+          - { deployed: "{{ cfg }}/quickshell/launcher/RaBbLELauncher.qml",     repo: "{{ df }}/quickshell/launcher/RaBbLELauncher.qml" }
+          - { deployed: "{{ cfg }}/quickshell/widgets/NotificationPopup.qml",   repo: "{{ df }}/quickshell/widgets/NotificationPopup.qml" }
+          # Zsh
+          - { deployed: "{{ cfg }}/zsh/.zshrc",        repo: "{{ df }}/shell/zsh/.zshrc" }
+          - { deployed: "{{ cfg }}/zsh/.zprofile",     repo: "{{ df }}/shell/zsh/.zprofile" }
+          - { deployed: "{{ cfg }}/zsh/aliases.zsh",   repo: "{{ df }}/shell/zsh/aliases.zsh" }
+          - { deployed: "{{ cfg }}/zsh/functions.zsh", repo: "{{ df }}/shell/zsh/functions.zsh" }
+          - { deployed: "{{ cfg }}/zsh/p10k.zsh",      repo: "{{ df }}/shell/zsh/p10k.zsh" }
+          # Bash
+          - { deployed: "{{ home }}/.bashrc",       repo: "{{ df }}/shell/bash/.bashrc" }
+          - { deployed: "{{ home }}/.bash_profile", repo: "{{ df }}/shell/bash/.bash_profile" }
+          - { deployed: "{{ home }}/.bash_aliases", repo: "{{ df }}/shell/bash/aliases.sh" }
+          # Shared
+          - { deployed: "{{ cfg }}/starship.toml",  repo: "{{ df }}/shell/starship.toml" }
+          - { deployed: "{{ cfg }}/foot/foot.ini",  repo: "{{ df }}/shell/foot.ini" }
+          - { deployed: "{{ cfg }}/mako/config",    repo: "{{ df }}/shell/mako.conf" }
+
+    # ── Diff each file ────────────────────────────────────────────────────────
+    - name: Check deployed files against repo
+      ansible.builtin.command:
+        cmd: "diff -u {{ item.repo }} {{ item.deployed }}"
+      register: _diffs
+      loop: "{{ dotfile_map }}"
+      changed_when: _diffs.rc == 1     # diff exits 1 when files differ
+      failed_when:  _diffs.rc > 1      # exit 2+ = error (file missing, etc.)
+      ignore_errors: true
+      tags: [pull, diff]
+
+    # ── Show summary ──────────────────────────────────────────────────────────
+    - name: Summarise changed files
+      ansible.builtin.debug:
+        msg: >
+          CHANGED: {{ item.item.deployed }}
+          {{ '  → will be pulled into: ' + item.item.repo if do_pull else '  → run with -e rabble_pull=true to pull' }}
+      loop: "{{ _diffs.results }}"
+      when: item.rc == 1
+      tags: [pull, diff]
+
+    - name: Report no changes
+      ansible.builtin.debug:
+        msg: "All deployed dotfiles match the repo. Nothing to pull."
+      when: _diffs.results | selectattr('rc', 'equalto', 1) | list | length == 0
+      tags: [pull, diff]
+
+    # ── Pull changed files back into repo ─────────────────────────────────────
+    - name: Pull changed files into repo
+      ansible.builtin.copy:
+        src:    "{{ item.item.deployed }}"
+        dest:   "{{ item.item.repo }}"
+        mode:   preserve
+        backup: true
+      loop: "{{ _diffs.results }}"
+      when:
+        - do_pull | bool
+        - item.rc == 1
+      tags: [pull]
+
+    - name: Pull summary
+      ansible.builtin.debug:
+        msg: >
+          Pulled {{ _diffs.results | selectattr('rc', 'equalto', 1) | list | length }} file(s) into {{ df }}.
+          Review with: git -C {{ rabble_repo_root }} diff
+          Then commit: git -C {{ rabble_repo_root }} add dotfiles/ && git commit
+      when:
+        - do_pull | bool
+        - _diffs.results | selectattr('rc', 'equalto', 1) | list | length > 0
+      tags: [pull]

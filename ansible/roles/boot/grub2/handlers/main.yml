@@ -1,0 +1,10 @@
+---
+# ansible/roles/boot/grub2/handlers/main.yml
+
+- name: Rebuild grub config
+  ansible.builtin.command: grub2-mkconfig -o /boot/grub2/grub.cfg
+  listen: Rebuild grub config
+
+- name: Rebuild initramfs
+  ansible.builtin.command: dracut --force --regenerate-all
+  listen: Rebuild initramfs

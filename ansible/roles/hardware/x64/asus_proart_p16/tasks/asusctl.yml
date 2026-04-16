@@ -1,0 +1,22 @@
+---
+# ansible/roles/hardware/x64/asus_proart_p16/tasks/asusctl.yml
+
+- name: Install asusctl (ASUS platform daemon)
+  ansible.builtin.dnf:
+    name: asusctl
+    state: present
+  tags: [hardware, asusctl]
+
+- name: Enable asusd service
+  ansible.builtin.systemd:
+    name: asusd
+    enabled: true
+    state: started
+  tags: [hardware, asusctl]
+
+- name: Set power profile via asusctl
+  ansible.builtin.command:
+    cmd: "asusctl profile --profile-set {{ rabble_asusctl_fan_curve | default('balanced') }}"
+  changed_when: false
+  ignore_errors: true
+  tags: [hardware, asusctl]

@@ -1,0 +1,10 @@
+---
+# ansible/playbooks/deploy-hardware.yml
+- name: Deploy hardware layer
+  hosts: "{{ rabble_target | default('all') }}"
+  become: true
+  tasks:
+    - name: Include ProArt P16 role
+      ansible.builtin.include_role:
+        name: hardware/x64/asus_proart_p16
+      when: rabble_target == 'asus_proart_p16' or 'asus_proart_p16' in group_names

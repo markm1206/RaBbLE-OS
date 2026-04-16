@@ -1,0 +1,9 @@
+---
+# ansible/roles/boot/session_manager/handlers/main.yml
+
+- name: Restart SDDM
+  ansible.builtin.systemd:
+    name: sddm
+    state: restarted
+  listen: Restart SDDM
+  ignore_errors: true   # safe to fail if called from within active SDDM session

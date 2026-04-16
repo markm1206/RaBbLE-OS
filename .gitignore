@@ -1,0 +1,44 @@
+# RaBbLE .gitignore
+
+# ── Bootstrap state ───────────────────────────────────────────────────────────
+.rabble/
+
+# ── Ansible ───────────────────────────────────────────────────────────────────
+ansible/.retry
+*.retry
+ansible/inventory/host_vars/     # host-specific secrets go here, not in git
+ansible/.vault_pass
+
+# ── Generated theme assets ────────────────────────────────────────────────────
+# Generate with generate-assets.sh — not tracked to keep repo small
+themes/grub2/rabble/background.png
+themes/grub2/rabble/top_accent.png
+themes/grub2/rabble/select_bkg_*.png
+themes/grub2/rabble/icons/*.png
+themes/grub2/rabble/fonts/*.pf2
+themes/plymouth/rabble/assets/*.png
+themes/plymouth/rabble/assets/spinner/
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# ── Editor ────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Secrets / credentials ─────────────────────────────────────────────────────
+*.vault
+secrets.yml
+vault.yml

@@ -1,0 +1,43 @@
+Fix the audio and brightness controlls via keyboard showing up on display
+Volume control in Waybar goes above 100%
+
+Install Hyprland
+    -- SDDM -> enter hyprland
+
+Customize Grub2
+    -- Have theme, need to debug and update it
+
+Customize Plymouth 
+    -- Has colored text (needs different font)
+    -- For some reason a noticeable reload occurs halfway through boot sequence.
+
+Remove KDE
+    -- Still reliant on KDE for wifi, date and time, and some unified system settings
+
+Setup mouse, keyboard functions, and power settings seperate from WM/DE
+    -- TODO
+    -- mouse handled by udev rules
+    -- power settings are handled by ppd, asusctl and various. 
+        -- shell should report metrics and allow plan selection
+
+Hypridle not working -- Need to fix. 
+
+SDDM theme not working need to fix
+
+Asusd not starting on statup 
+
+Make QuickShell fallback to waybar if it fails. 
+Make Waybar themed as RaBbLE and usable.
+    -- Less custom but still fully functional
+
+Need to build quickshell from a more ground up state OR inherit a quickshell I want to clone and port it
+
+
+Fix the ZSH XRT prompt at top of terminal (UGLY -- Unpolished)
+
+Make more apps follow the RaBbLE sythwave theme.
+
+Further define themeing
+
+
+Package into Ansible -- As I go.

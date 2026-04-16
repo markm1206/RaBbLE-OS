@@ -1,0 +1,66 @@
+---
+# ansible/inventory/group_vars/asus_proart_p16.yml
+# =============================================================================
+# ASUS ProArt P16 H7606WV — Hardware-specific overrides
+#
+# Verified hardware (from BaBbLE research):
+#   CPU:  AMD Ryzen AI 9 HX 370 (Strix Point, 24 threads)
+#   iGPU: AMD Radeon 890M (RDNA 3.5 gfx1150) — drives display
+#   dGPU: NVIDIA RTX 4060 Max-Q Mobile (Optimus/PRIME offload only)
+#   NPU:  AMD XDNA2 — /dev/accel/accel0, amdxdna 0.6.0
+#   RAM:  32GB
+#   Panel: 3840x2400 OLED 16"
+# =============================================================================
+
+# ── Display ───────────────────────────────────────────────────────────────────
+rabble_hidpi_scale: 2
+
+# GRUB menu resolution: readable at HiDPI — NOT the native 3840x2400.
+# At 3840x2400 the GRUB menu text is microscopic even with large fonts.
+# The kernel keeps native res via gfxpayload=keep.
+rabble_grub_gfxmode:    "1280x800x32,auto"
+rabble_grub_gfxpayload: "keep"
+
+# TTY: largest terminus font — readable on 3840x2400 @ 16"
+rabble_console_font: "ter-v32b"
+
+# ── Kernel cmdline extras (ProArt-specific) ───────────────────────────────────
+# mem_sleep_default=s2idle: AMD Strix Point requires s2idle — S3 (deep) not supported
+# nvidia params: required for suspend/resume VRAM preservation
+# nouveau blacklist: must be blacklisted before akmod-nvidia
+rabble_grub_extra_cmdline: >-
+  mem_sleep_default=s2idle
+  nvidia.NVreg_PreserveVideoMemoryAllocations=1
+  nvidia.NVreg_TemporaryFilePath=/tmp
+  rd.driver.blacklist=nouveau
+  modprobe.blacklist=nouveau
+  video=efifb:off
+
+# ── Hyprland monitor config (templated into machine.conf) ────────────────────
+rabble_hypr_monitor: "eDP-1,3840x2400@60,0x0,2"
+rabble_hypr_monitor_fallback: ",preferred,auto,1"
+
+# ── Hardware flags ────────────────────────────────────────────────────────────
+hardware:
+  platform:     "asus_laptop"
+  product:      "ProArt P16 H7606WV"
+  cpu_vendor:   "amd"
+  igpu:         "amd_890m"
+  igpu_pci:     "65:00.0"
+  dgpu:         "nvidia_rtx4060_mobile"
+  dgpu_pci:     "64:00.0"
+  npu:          "amd_xdna2"
+  npu_pci:      "66:00.1"
+  npu_device:   "/dev/accel/accel0"
+  gpu_mode:     "Hybrid"   # supergfxctl: Integrated | Hybrid | Dedicated
+  nouveau_loaded: false    # Set true only before first nvidia install
+
+# ── NVIDIA driver flags ───────────────────────────────────────────────────────
+nvidia:
+  modeset:       true
+  fbdev:         true
+  preserve_vram: true
+  use_gbm:       true
+
+# ── NPU ───────────────────────────────────────────────────────────────────────
+rabble_npu_enabled: true
