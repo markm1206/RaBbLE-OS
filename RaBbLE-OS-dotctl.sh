@@ -78,7 +78,7 @@ BUNDLE_ORDER=(hypr wallpapers waybar quickshell zsh bash mako)
 
 declare -A BUNDLE_RELOAD=(
   [hypr]="hyprctl reload"
-  [wallpapers]="hyprctl hyprpaper reload"
+  [wallpapers]="pkill -x hyprpaper || true; setsid --fork hyprpaper &>/dev/null"
   [waybar]="pkill -x waybar || true; setsid --fork waybar &>/dev/null"
   [quickshell]="pkill -x quickshell || true; setsid --fork quickshell &>/dev/null"
   [zsh]="source ${HOME}/.config/zsh/.zshrc 2>/dev/null || true"

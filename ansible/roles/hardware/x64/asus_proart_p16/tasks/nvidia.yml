@@ -1,6 +1,61 @@
 ---
-# hardware/x64/asus_proart_p16/tasks/nvidia.yml — STUB
-- name: "asus_proart_p16/nvidia — stub"
-  ansible.builtin.debug:
-    msg: "spark ~ hardware/asus_proart_p16/nvidia >> stub, no-op // %DORMANT%"
-  tags: [hardware]
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║  Hardware: NVIDIA RTX 4060 Max-Q Mobile (Optimus/PRIME offload)  ║
+# ║                                                                  ║
+# ║  ARCHITECTURE NOTE:                                              ║
+# ║  This is a laptop MUX setup — the RTX 4060 does NOT drive the   ║
+# ║  display in Hybrid mode. The AMD 890M drives Wayland/KMS.        ║
+# ║  NVIDIA is used via DRI_PRIME=1 for GPU-intensive workloads      ║
+# ║  (LLM inference, rendering, CUDA compute).                       ║
+# ║                                                                  ║
+# ║  CRITICAL: nouveau is loaded by default on Fedora 43.            ║
+# ║  It MUST be blacklisted before akmod-nvidia installation.        ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+# ─── Step 1: Blacklist nouveau ────────────────────────────────────
+- name: Blacklist nouveau kernel module
+  copy:
+    dest: /etc/modprobe.d/blacklist-nouveau.conf
+    content: |
+      # RaBbLE-OS: Blacklist nouveau to allow akmod-nvidia
+      # nouveau conflicts with the proprietary NVIDIA driver
+      blacklist nouveau
+      options nouveau modeset=0
+  notify: regenerate initramfs
+
+- name: Check if nouveau is currently loaded
+  command: lsmod
+  register: lsmod_check
+  changed_when: false
+
+- name: Warn if nouveau is still active (requires reboot after initramfs rebuild)
+  debug:
+    msg: |
+      ⚠️  nouveau is currently loaded in RAM.
+      The blacklist takes effect after initramfs rebuild + reboot.
+      This playbook will rebuild initramfs — then REBOOT before next run.
+  when: "'nouveau' in lsmod_check.stdout"
+
+# ─── Step 1b: nvidia-drm fbdev (Wayland KMS, required >= driver 545) ──────────
+- name: Set nvidia-drm fbdev=1 for Wayland framebuffer support
+  copy:
+    dest: /etc/modprobe.d/rabble-nvidia-wayland.conf
+    content: |
+      # RaBbLE-OS: NVIDIA Wayland / KMS options
+      # fbdev=1 required for proper framebuffer on newer NVIDIA drivers (>= 545)
+      # modeset=1 is set separately by supergfxd.conf
+      options nvidia-drm fbdev=1
+  notify: regenerate initramfs
+
+# ─── Step 2: NVIDIA Driver Installation ──────────────────────────
+- name: Install akmod-nvidia (auto-rebuilds on kernel updates)
+  dnf:
+    name:
+      - akmod-nvidia              # Kernel module (auto-rebuilds with kmod)
+      - xorg-x11-drv-nvidia       # Xorg driver (still needed even on Wayland)
+      - xorg-x11-drv-nvidia-cuda  # CUDA support
+      - xorg-x11-drv-nvidia-cuda-libs
+      - libva-nvidia-driver  # The current Fedora 43 naming convention for Vid Accel
+      - libva-utils
+    state: present
+  when: "'nouveau' in lsmod_check.stdout"
