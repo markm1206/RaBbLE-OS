@@ -77,7 +77,9 @@ Core packages, repos, locale, fonts.
 
 | Role | Packages | Config | State |
 |------|---------|--------|-------|
-| core | ✓ | ✓ | %LOCKED% |
+| core | ✗ STUB | ✗ STUB | %DORMANT% |
+
+**Note:** Core role is scaffolded but packages/config not yet defined. Base system relies on Fedora Sway spin defaults.
 
 ---
 
@@ -157,6 +159,25 @@ Dev tools, IDE, browsers.
 | Role | Packages | Config | State |
 |------|---------|--------|-------|
 | apps | ✓ | ✓ | %DEPLOYABLE% |
+
+---
+
+## Stub Roles
+
+Roles that exist but perform no actions — scaffolding for future implementation:
+
+| Role | Type | Status |
+|------|------|--------|
+| core | packages | %DORMANT% — no packages defined yet |
+| core | config | %DORMANT% — no config defined yet |
+| hardware/x64/generic | packages | %DORMANT% — minimal stub |
+| hardware/x64/generic | config | %DORMANT% — minimal stub |
+| desktop/terminal | packages | %DORMANT% — terminal packages deferred |
+
+**Stub vs Active:**
+- **Active**: Role performs real work (installs packages, deploys configs)
+- **Stub**: Role contains only debug messages, no functional tasks
+- **Scaffold**: Role exists with structure but incomplete implementation
 
 ---
 
