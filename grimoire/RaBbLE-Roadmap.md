@@ -1,197 +1,267 @@
-# RaBbLE-Roadmap.md — The Harmonic Evolution
+# RaBbLE-Roadmap.md — Entropy Map
 
 ```
-transcribe ~ grimoire >> charting the metamorphosis // %TRAJECTORY_LOCKED%
+transcribe ~ grimoire >> entropy map crystallized // %ROADMAP_V2%
 ```
 
-> Phases are resonance thresholds, not deadlines.
-> A phase is complete when it feels complete — not when a calendar says so.
+> Epochs are broad goal thresholds. Layers track entropy state. Features move from New Horizons to epoch branches.
+> When entropy cools, features archive into stable documentation.
 
 ---
 
-## Phase Map
+## Entropy States
+
+| State | Signal | Meaning |
+|-------|--------|---------|
+| %HIGH_ENTROPY% | High flux | Experimental, likely to change |
+| %TESTING_IN_PROCESS% | Testing | Working but unverified on hardware |
+| %DEPLOYABLE% | Deployable | Works on target, needs live verification |
+| %STABLE% | Stable | Verified on target hardware |
+| %LOCKED% | Locked | Frozen until next epoch |
+
+---
+
+## Epoch Map
+
+### Epoch I — Daily Driver `[IN PROGRESS]`
+
+**Goal:** Fully deployable RaBbLE-OS on ASUS ProArt P16. Hyprland desktop with stable tooling stack.
+
+**Scope:**
+- Layer 0–4 ansible deployment functional
+- Hyprland desktop from SDDM with waybar
+- Basic monitoring (btop, htop, powertop, sensors)
+- Hardware abstraction for ProArt P16 + generic x64
+- Installation and bootstrap entrypoints
+
+**Landed:**
+- Substrate, entrypoints, control-plane (install/bootstrap/layerctl/dotctl)
+- All Ansible roles scaffolded
+- Hyprland config with functionkeys
+- Waybar with network menu
+- Wallpaper deployment
+
+**Remaining:**
+- Hypridle + hyprlock configuration
+- Quickshell bar (long-term)
+- NVIDIA runtime verification
+- XRT/XDNA2 NPU verification
+- Portability testing (generic x64)
+
+---
+
+### Epoch II — Entity Awakening `[PENDING]`
+
+**Goal:** AI tooling layer integrated. RaBbLE entity begins to take form.
+
+**Scope:**
+- Ollama local inference
+- MCP servers wired (filesystem, git, rabble-state)
+- RaBbLE shell integration
+- Ambient monitoring agent
+- RaBbLE-lang in AI interfaces
+
+---
+
+### Epoch ∞ — Continuous Drift `[PERPETUAL]`
+
+RaBbLE-OS absorbs new tools, new models, new patterns. Never complete.
+
+---
+
+## Layer State Map
+
+### Layer 0 — Base `%LOCKED%`
+
+Core packages, repos, locale, fonts.
+
+| Role | Packages | Config | State |
+|------|---------|--------|-------|
+| core | ✓ | ✓ | %LOCKED% |
+
+---
+
+### Layer 1 — Hardware `%TESTING_IN_PROCESS%`
+
+Hardware abstraction via DMI profiles.
+
+| Role | Packages | Config | State |
+|------|---------|--------|-------|
+| hardware/x64/asus_proart_p16 | ✓ | ~ | %TESTING_IN_PROCESS% |
+| hardware/x64/generic | ✓ | ✓ | %DEPLOYABLE% |
+
+**TODO:**
+- [ ] Suspend/resume stable
+- [ ] ASUS asusd reliable on boot
+- [ ] Brightness keys verified
+- [ ] NPU (XDNA2) verified operational
+
+**TODO (generic):**
+- [ ] Test on clean Fedora minimal
+
+---
+
+### Layer 2 — Boot `%TESTING_IN_PROCESS%`
+
+GRUB2 → Plymouth → SDDM.
+
+| Role | Packages | Config | State |
+|------|---------|--------|-------|
+| boot/grub2 | ✓ | ~ | %TESTING_IN_PROCESS% |
+| boot/plymouth | ✓ | ~ | %DEPLOYABLE% |
+| boot/session_manager | ✓ | ✓ | %STABLE% |
+
+**TODO:**
+- [ ] GRUB2: remove bg image, color-only theme
+- [ ] GRUB2: 4K font (Terminus 32pt)
+- [ ] GRUB2: direct-boot timeout behavior
+- [ ] Plymouth: fix font reference
+- [ ] Plymouth: NVIDIA defer (blacklist from initramfs)
+- [ ] SDDM: Qt6 `Main.qml` validated
+
+---
+
+### Layer 3 — Desktop `%DEPLOYABLE%`
+
+Hyprland compositor + shell stack.
+
+| Role | Packages | Config | State |
+|------|---------|--------|-------|
+| desktop/hyprland | ✓ | ✓ | %DEPLOYABLE% |
+| desktop/wayland | ✓ | ✓ | %DEPLOYABLE% |
+| desktop/waybar | ✓ | ✓ | %DEPLOYABLE% |
+| desktop/shell/zsh | ✓ | ✓ | %STABLE% |
+| desktop/shell/bash | ✓ | ✓ | %STABLE% |
+| desktop/terminal | ✓ | ✓ | %STABLE% |
+| desktop/launcher | ✓ | ✓ | %DEPLOYABLE% |
+| desktop/screenshot | ✓ | ✓ | %STABLE% |
+| desktop/swayosd | ✓ | ✓ | %DEPLOYABLE% |
+| desktop/notifications | ✓ | ✓ | %DEPLOYABLE% |
+| desktop/network-applet | ✓ | ✓ | %DEPLOYABLE% |
+| desktop/quickshell | ✓ | ✓ | %HIGH_ENTROPY% |
+| desktop/v4l2 | ✓ | ✓ | %DEPLOYABLE% |
+
+**TODO:**
+- [ ] Hypridle configuration
+- [ ] Hyprlock configuration
+- [ ] Quickshell bar (long-term waybar replacement)
+- [ ] Mouse settings (libinput scroll, sensitivity)
+- [ ] Keyboard backlight (asusctl verify)
+
+---
+
+### Layer 4 — Apps `%DEPLOYABLE%`
+
+Dev tools, IDE, browsers.
+
+| Role | Packages | Config | State |
+|------|---------|--------|-------|
+| apps | ✓ | ✓ | %DEPLOYABLE% |
+
+---
+
+## Cross-cutting Layers
+
+| Role | State | Notes |
+|------|-------|-------|
+| monitoring | %DEPLOYABLE% | btop, htop, powertop, sensors |
+| runtime | %HIGH_ENTROPY% | XRT/CUDA/ROCm — conditional |
+| snapper | %DEPLOYABLE% | Btrfs snapshots |
+
+**TODO:**
+- [ ] runtime: XRT for XDNA2 NPU
+- [ ] runtime: CUDA for NVIDIA PRIME offload
+- [ ] runtime: ROCm (if needed)
+- [ ] monitoring: nvtop for GPU metrics
+
+---
+
+## Post-Ansible Config
+
+Manual or scripted config that Ansible doesn't handle:
+
+| Task | State | Scope |
+|------|-------|-------|
+| Hypridle (idle timeout) | %HIGH_ENTROPY% | desktop |
+| Hyprlock (screen lock) | %HIGH_ENTROPY% | desktop |
+| Quickshell bar | %HIGH_ENTROPY% | desktop |
+| HDMI hotplug script | %DEPLOYABLE% | desktop |
+| wallpaper deploy | %STABLE% | desktop |
+| shell prompt (p10k vs starship) | %TESTING_IN_PROCESS% | desktop |
+
+**TODO:**
+- [ ] Hypridle: idle timeout, lock command, dim timeout
+- [ ] Hyprlock: unlock shortcut, background, colors
+
+---
+
+## Feature Archive
+
+Features that have cooled to stable status:
+
+| Feature | Epoch | Archived |
+|---------|-------|----------|
+| Wallpaper generation + hyprpaper | I | ✓ |
+| Waybar with network menu | I | ✓ |
+| functionkeys mic mute fix | I | ✓ |
+| hyprpaper multi-monitor | I | ✓ |
+| layerctl operational | I | ✓ |
+| dotctl wallpapers bundle | I | ✓ |
+| HDMI hotplug script | I | ✓ |
+| powertop auto-tune | I | ✓ |
+
+---
+
+## Surface Area — Epoch I Scope
 
 ```
-Phase 0: FOUNDATION        [IN PROGRESS] — The bones
-Phase 1: DAILY DRIVER      [IN PROGRESS] — The flesh
-Phase 2: AI AWAKENING      [PENDING]     — The nervous system
-Phase 3: ENTITY EMERGENCE  [PENDING]     — The presence
-Phase ∞: CONTINUOUS DRIFT  [PERPETUAL]   — The evolution
+CLI Tools
+├── Shell (zsh + bash) ────────────────── %STABLE%
+├── Prompt (starship) ────────────────── %TESTING%
+├── Core utils (eza, fd, rg, fzf) ───── %DEPLOYABLE%
+├── Neovim + LSP ────────────────────── %DEPLOYABLE%
+└── Git tooling ──────────────────────── %DEPLOYABLE%
+
+Desktop
+├── Hyprland compositor ──────────────── %DEPLOYABLE%
+├── Waybar ──────────────────────────── %DEPLOYABLE%
+├── Launcher (wofi/fuzzel) ──────────── %DEPLOYABLE%
+├── Notifications (mako) ──────────── %DEPLOYABLE%
+├── Screenshots (grim + slurp) ─────── %STABLE%
+└── Quickshell ────────────────────── %HIGH_ENTROPY% (future)
+
+Hardware
+├── NVIDIA Optimus ────────────────── %DEPLOYABLE%
+├── AMD XDNA2 NPU ─────────────────── %HIGH_ENTROPY%
+├── asusctl + supergfxctl ──────────── %TESTING%
+└── Brightness + keyboard backlight ── %TESTING%
+
+Monitoring
+├── btop/htop ─────────────────────── %DEPLOYABLE%
+├── powertop ─────────────────────── %DEPLOYABLE%
+└── sensors ──────────────────────── %DEPLOYABLE%
 ```
 
 ---
 
-## Phase 0 — Foundation `[IN PROGRESS]`
+## Epoch I Verification Checklist
 
-Structural and philosophical substrate. Docs, conventions, Ansible scaffolding.
+Before landing to `main`:
 
-- [x] Repository structure established
-- [x] Ansible roles scaffolded (core, hardware, boot, snapper, desktop)
-- [x] Ansible cfg, inventory group_vars, host_vars in place
-- [x] Snapper configured with sane cleanup policy
-- [x] Hardware vars documented (ProArt P16 H7606WV) — structured NPU dict
-- [x] NVIDIA Optimus/PRIME setup documented and automated
-- [x] AMD XDNA2 NPU role scaffolded; `runtime/` role with XRT/CUDA/ROCm
-- [x] `monitoring/` role — btop, htop, nvtop, powertop, lm_sensors
-- [x] `grimoire/RaBbLE.md` — identity and ethos
-- [x] `grimoire/Architecture.md` — layer model documented
-- [x] `grimoire/CommitStyle.md` — Pulse Protocol locked
-- [x] `grimoire/KnownIssues.md` — issue tracker initialized
-- [ ] Hardware role restructured with DMI verification and machine profiles
-- [ ] `purge-kde/` role written (safe KDE removal list confirmed)
-
----
-
-## Phase 1 — Daily Driver `[IN PROGRESS]`
-
-A fully functional, stable computing environment. RaBbLE is silent here — pure tooling.
-
-### 1.1 — Boot Chain `[IN PROGRESS]`
-- [x] GRUB2 configured
-- [x] Plymouth theme assets in repo
-- [x] SDDM configured as session manager
-- [ ] GRUB2: remove background image, use color-only theme (bit depth fix)
-- [ ] GRUB2: 4K font fix (Terminus 32pt via `grub2-mkfont`)
-- [ ] GRUB2: direct-boot behavior — countdown timeout, boot last entry by default
-- [ ] GRUB2: verify `GRUB_DISABLE_OS_PROBER=false` for removable media detection
-- [ ] GRUB2: `fbcon=font:TER16x32` in cmdline for early TTY font consistency
-- [ ] Plymouth: fix DejaVu font reference — use bundled asset or system Terminus
-- [ ] Plymouth: update script hex values to canonical palette (`#ff2d78`, `#bf5fff`)
-- [ ] Plymouth: NVIDIA defer fix — blacklist NVIDIA from initramfs, load at `graphical.target`
-- [ ] SDDM: `Main.qml` validated against Qt6 API
-- [ ] Verify void color continuity: GRUB `bgcolor` = Plymouth bg = SDDM bg = `#0a0010`
-
-### 1.2 — Desktop
-- [x] Hyprland installed and configured
-- [x] Dotfiles symlinked via Ansible
-- [x] Waybar, wofi, mako, hyprpaper roles present
-- [ ] Hyprland launching reliably from SDDM with correct GPU env
-- [ ] KDE purged (`purge-kde/` role)
-- [ ] Hyprland wallpaper creation managed by Ansible
-- [ ] Quickshell bar replacing Waybar
-  - [x] `config/quickshell/` — `shell.qml`, bar widgets, launcher, notification popup in repo
-  - [ ] Build from source stabilized on Fedora 43
-  - [ ] `RaBbLEBar.qml` widgets validated live (audio, battery, clock, workspace, tray)
-  - [ ] `RaBbLELauncher.qml` functional
-- [ ] Mouse settings handled outside WM via libinput (scroll type, sensitivity, acceleration)
-- [ ] Minimize/maximize/close button hooks (or intentional titlebar-free design decision)
-- [ ] Unified settings panel (candidate: nwg-look, or custom QML via Quickshell)
-
-### 1.3 — Shell & Terminal
-- [x] zsh + zinit configured — `.zshrc`, aliases, functions, p10k in `config/shell/zsh/`
-- [x] Starship config in repo (`config/shell/starship.toml`)
-- [ ] p10k vs Starship — confirm one winner and remove the other
-- [ ] ZSH XRT prompt artifact fixed
-- [ ] zellij workspace layouts defined (dev, comms, monitoring)
-- [ ] Core CLI tools: `eza`, `fd`, `ripgrep`, `fzf`, `delta`, `lazygit`
-- [ ] Neovim with LSP (language servers for: Python, Rust, Lua, bash, yaml, ansible)
-- [ ] Shell feel more distinctly RaBbLE — aliases, functions, MOTD
-
-### 1.4 — Hardware Verified
-- [x] NVIDIA Optimus configured
-- [x] asusctl + supergfxctl installed
-- [ ] Suspend/resume verified stable (s2idle + NVIDIA hooks)
-- [ ] XDNA2 NPU operational (verify XRT packages available for Fedora 43)
-- [ ] ASUS asusd reliable on boot (intermittent start failure resolved)
-- [ ] Brightness keys working (user in `video` group)
-
-### 1.5 — Portability
-- [ ] Hardware role restructured with DMI verification and machine profiles
-- [ ] Desktop machine target added (generic x64 role)
-- [ ] Playbook tested on clean Fedora minimal install (not KDE spin)
-
----
-
-## Phase 2 — AI Awakening `[PENDING]`
-
-Integrate the AI tooling layer. Agents have presence. RaBbLE begins to take form.
-
-- [ ] Ollama installed and serving (local inference)
-  - [ ] Model roster defined and pulled
-  - [ ] GPU acceleration verified (RTX 4060 via PRIME offload)
-- [ ] llama.cpp with CUDA backend (`ai_stack.phase: 1`)
-- [ ] vLLM OpenAI-compatible server (`ai_stack.phase: 2`)
-- [ ] FastFlowLM NPU inference (requires XDNA2 XRT operational)
-- [ ] Claude Code configured with MCP servers
-  - [ ] `filesystem` MCP server
-  - [ ] `git` MCP server
-  - [ ] Custom `rabble-state` MCP server (exposes system state to agents)
-- [ ] Local vector store (ChromaDB or Qdrant) at `~/.rabble/memory/`
-- [ ] Shell AI integration (`aichat` or equivalent with model routing)
-- [ ] `nomic-embed-text` embedding pipeline (local, Ollama-native)
-
----
-
-## Phase 3 — Entity Emergence `[PENDING]`
-
-RaBbLE transitions from a collection of tools into a unified, characterful entity.
-
-- [ ] RaBbLE system prompt formalized (from `grimoire/RaBbLE.md` entity section)
-- [ ] Persistent behavioral memory (mem0 + ChromaDB)
-- [ ] Ambient system monitoring (passive watcher agent)
-- [ ] Proactive anomaly surfacing — RaBbLE flags drift without being asked
-- [ ] RaBbLE-lang output in all AI interfaces
-- [ ] Desktop/terminal notifications in RaBbLE voice
-- [ ] Behavioral learning: usage pattern logging (local-only, opt-in)
-- [ ] BaBbLE trigger conditions tuned for this hardware + workflow
-
----
-
-## Phase ∞ — Continuous Drift `[PERPETUAL]`
-
-RaBbLE-OS is never done. The substrate absorbs new tools, new models, new patterns.
-
-```
-glitch ~ %TIMELINE_INT% >> the roadmap dissolves at Phase ∞ // %HARMONIC_EVOLUTION%
-```
-
-**Practices for perpetual evolution:**
-- Review `KnownIssues.md` regularly
-- `transcribe` commits whenever philosophy or documentation changes
-- Log `%GENIUS_RESONANCE%` moments in `KnownIssues.md`
-- Never let the system fossilize into `%ZERO_ENTROPY%`
-
----
-
-## Distribution Goal
-
-RaBbLE-OS is not just a personal system. Long-term target:
-
-- Layers split into independent repos, assembled by manifest
-- Kickstart-based installer for clean Fedora minimal base
-- Custom live ISO
-- External contributors welcome
-
-See `Architecture.md` for the layer model and multi-repo future structure.
-
----
-
-## Workspace Vision (Phase 3+)
-
-From early design notes — the intended Hyprland workspace model:
-
-Workspaces are **task spaces**, not just window groups:
-- Each workspace maps to a context: `Coding`, `Job Search`, `Entertainment`, `Gaming`, `Productivity`
-- Within a workspace, apps exist in **layered stacks** of tiles — stacks act like sub-workspaces
-- Switching workspaces is a full context switch with optional default app layout
-- Windows remain draggable with intelligent snapping — all vertices draggable to resize the tile mosaic
-- Workspace switching is deliberate and broad; stack switching is fast and local
-
-This is a Phase 3 design goal — Hyprland workspace scripting + Quickshell integration.
+- [ ] `layerctl apply all` completes without errors
+- [ ] SDDM launches Hyprland session
+- [ ] Waybar displays (clock, battery, network, workspaces)
+- [ ] functionkeys work (volume, brightness, mic)
+- [ ] Wallpaper displays on all monitors
+- [ ] suspend/resume cycles work
+- [ ] NVIDIA offload verified (`glxinfo | grep renderer`)
+- [ ] Monitoring tools functional (btop, powertop)
+- [ ] Layer states documented as %STABLE%
 
 ---
 
 ## Revision History
 
 | Version | Date | Change |
-|---|---|---|
-| v0.1 | 2026-04-06 | Initial roadmap — Phase 0 active |
-| v0.2 | 2026-04-08 | Phase 1 expanded, greetd removed |
-| v0.3 | 2026-04-12 | SDDM canonical, BaBbLE items distilled in, workspace vision added |
-| v0.4 | 2026-04-16 | runtime/monitoring roles added, Quickshell QML in repo, shell dotfiles in repo |
-
----
-
-```
-transcribe ~ grimoire >> roadmap crystallized, v0.3 // %LOW_ENTROPY_LOCKED%
-```
+|---------|------|--------|
+| v0.5 | 2026-04-21 | Restructured with entropy states, layer map, epoch framing |
