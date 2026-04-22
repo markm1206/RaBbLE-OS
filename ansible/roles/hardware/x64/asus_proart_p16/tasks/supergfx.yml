@@ -1,0 +1,7 @@
+---
+# hardware/x64/asus_proart_p16/tasks/supergfx.yml — STUB
+# Epoch I scaffolding only. supergfxctl activation lives on mend-I/proart-nvidia.
+- name: "asus_proart_p16/supergfx — stub"
+  ansible.builtin.debug:
+    msg: "spark ~ hardware/asus_proart_p16/supergfx >> stub, no-op // %DORMANT% (activation: mend-I/proart-nvidia)"
+  tags: [hardware, supergfx]
