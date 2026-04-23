@@ -69,7 +69,6 @@
       # NVIDIA (card0) has no CRTCs in Optimus hybrid mode — sway compositor crashes without this.
       [Wayland]
       CompositorCommand=env WLR_DRM_DEVICES=/dev/dri/card1 /usr/libexec/sddm-compositor-sway
-  notify: restart sddm
 
 # ─── Step 2: NVIDIA Driver Installation ──────────────────────────
 - name: Install akmod-nvidia (auto-rebuilds on kernel updates)
