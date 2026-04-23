@@ -239,6 +239,85 @@ Any failure becomes a `mend-I/*` issue or a blocker that holds epoch landing.
 
 ---
 
+### Power Testing Protocol
+
+Run on battery, wifi connected but idle, display at 50% brightness.
+Take readings at each stage to isolate the cost of each layer.
+
+**Goal:** `<10W` idle for light workloads. Primary suspect for excess draw is the
+NVIDIA GPU waking unnecessarily. Capture baseline before and after each change.
+
+#### Stage readings — capture at each point
+
+```bash
+# Primary: battery discharge rate in watts (most accurate)
+upower -d | grep -A3 "BAT" | grep "energy-rate"
+
+# Cross-check via sysfs (divide by 1,000,000 for watts)
+awk '{printf "%.1f W\n", $1/1000000}' /sys/class/power_supply/BAT0/power_now
+
+# NVIDIA: is it awake, and what is it drawing?
+nvidia-smi --query-gpu=name,power.draw,pstate --format=csv,noheader 2>/dev/null \
+  || echo "NVIDIA not active / no driver"
+
+# NVIDIA PCI power management state (D3cold = fully off, D0 = active)
+cat /sys/bus/pci/devices/0000:01:00.0/power_state 2>/dev/null
+cat /sys/bus/pci/devices/0000:01:00.0/power/runtime_status 2>/dev/null
+
+# Display brightness (normalise your measurements to 50%)
+BRIGHT=$(cat /sys/class/backlight/*/brightness 2>/dev/null | head -1)
+MAX=$(cat /sys/class/backlight/*/max_brightness 2>/dev/null | head -1)
+echo "Brightness: $BRIGHT / $MAX ($(( BRIGHT * 100 / MAX ))%)"
+
+# CPU frequency and package power (requires kernel-tools)
+turbostat --show PkgWatt,CorWatt,RAMWatt,PkgTmp --interval 5 --num_iterations 3 2>/dev/null
+
+# Sustained draw over 60 seconds (requires powerstat)
+sudo powerstat -d 0 -c 5 12   # 12 readings × 5s = 60s window
+```
+
+#### Measurement stages
+
+| Stage | When | Expected draw |
+|-------|------|---------------|
+| **S0: TTY** | Fresh boot, no GUI, no Ansible | ~8–12 W |
+| **S1: SDDM** | After bootstrap, SDDM greeter only | ~10–14 W |
+| **S2: Hyprland idle** | Epoch I session, AMD only, nothing open | ~10–15 W |
+| **S3: Light workload** | Firefox open, one terminal, idle | ~12–18 W |
+| **S4: NVIDIA loaded** | After mend-I/proart-nvidia; `nvidia-smi` working | measure |
+| **S5: NVIDIA RTD3** | After D3cold fix applied | should be ≈ S2 |
+
+Record actual readings in `Issues.txt` or `RaBbLE-OS-KnownIssues.md`.
+
+#### NVIDIA power management fix (mend-I/proart-nvidia)
+
+The primary cause of NVIDIA idle draw is the GPU staying in D0 (active) when
+it should be in D3cold (fully powered off). Fix requires two things:
+
+**1. Fine-grained power management modprobe option:**
+```bash
+# /etc/modprobe.d/rabble-nvidia-powermgmt.conf
+options nvidia NVreg_DynamicPowerManagement=0x02
+```
+`0x02` = fine-grained (allows D3cold). `0x01` = coarse (GPU stays warm at idle).
+After adding, rebuild initramfs: `sudo dracut -f --regenerate-all`
+
+**2. Do NOT enable `nvidia-persistenced`:**
+Persistence mode keeps the GPU in D0. Leave it disabled for hybrid/Optimus use.
+
+**3. Enable NVIDIA power services:**
+```bash
+sudo systemctl enable nvidia-powerd   # Dynamic Boost 2.0
+```
+
+**Verify D3cold after driver load:**
+```bash
+cat /sys/bus/pci/devices/0000:01:00.0/power_state
+# Should show "D3cold" within ~10s of no GPU activity
+```
+
+---
+
 ### Fedora 44 Migration Plan
 
 Do NOT attempt on the same day as the Epoch I bootstrap. Validate F43 first.
