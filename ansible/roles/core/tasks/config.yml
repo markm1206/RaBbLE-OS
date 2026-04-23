@@ -1,7 +1,13 @@
 ---
-# core/tasks/config.yml — STUB
-# harmonize ~ core >> no config yet // %DORMANT%
-- name: core config — stub
-  ansible.builtin.debug:
-    msg: "spark ~ core >> config stub, no-op // %DORMANT%"
-  tags: [base, config]
+# core/tasks/config.yml — System identity and base configuration
+
+- name: Deploy /etc/os-release (RaBbLE-OS identity)
+  ansible.builtin.template:
+    src: os-release.j2
+    dest: /etc/os-release
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: rebuild grub config
+  tags: [base, config, identity]

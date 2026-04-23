@@ -26,5 +26,16 @@ rabble_color_text:    "#e8d5ff"   # Off-white with purple tint — primary text
 rabble_color_muted:   "#8860aa"   # Muted purple — secondary/dim text
 rabble_color_surface: "#120025"   # Elevated surface — input fields, cards
 
+# ── OS Identity ───────────────────────────────────────────────────────────────
+# Controls /etc/os-release — what GRUB entries, neofetch, hostnamectl show.
+# ID and VERSION_ID stay as fedora/43 for DNF/RPM/repo compatibility.
+# Override rabble_epoch_name in host_vars/ to distinguish installs in GRUB.
+rabble_epoch_name:     "Epoch I"
+rabble_os_name:        "RaBbLE-OS"
+rabble_os_pretty_name: "RaBbLE-OS — {{ rabble_epoch_name }} (Fedora {{ rabble_fedora_version }})"
+rabble_os_variant:     "RaBbLE Desktop"
+rabble_os_home_url:    "https://github.com/markm1206/RaBbLE-OS"
+rabble_fedora_version: "43"
+
 # ── Desktop ───────────────────────────────────────────────────────────────────
 rabble_default_shell: zsh    # zsh | bash
