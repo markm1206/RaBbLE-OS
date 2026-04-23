@@ -2,8 +2,10 @@
 BaBbLE/
 
 # AI tooling — local only
-.claude
 CLAUDE.md
+Codex.md
+.claude/*
+.codex
 
 # Logs
 logs/
