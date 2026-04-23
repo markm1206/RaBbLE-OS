@@ -1,6 +1,24 @@
 ---
-# boot/session_manager/tasks/config.yml — STUB
-- name: sddm config — stub
-  ansible.builtin.debug:
-    msg: "spark ~ boot/session_manager >> config stub, no-op // %DORMANT%"
+# boot/session_manager/tasks/config.yml
+# System-level session/login configuration (requires become: true).
+# Logind controls hardware events (lid close, power button, suspend).
+# SDDM theme config is handled separately via dotctl.
+
+- name: Create logind drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/logind.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [boot, sddm, config]
+
+- name: Deploy logind lid-switch policy (suspend on lid close)
+  ansible.builtin.copy:
+    src: "{{ dotfiles_repo_root }}/config/systemd/logind.conf.d/99-rabble-lid.conf"
+    dest: /etc/systemd/logind.conf.d/99-rabble-lid.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload logind
   tags: [boot, sddm, config]

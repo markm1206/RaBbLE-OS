@@ -1,22 +1,6 @@
 ---
-# desktop/waybar/tasks/config.yml
-# Deploys waybar config files from the grimoire to ~/.config/waybar/
-
-- name: Create waybar config directories
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: directory
-    mode: '0755'
-  loop:
-    - "{{ waybar_config_dir }}"
-    - "{{ waybar_config_dir }}/scripts"
-  tags: [desktop, waybar, config]
-
-- name: Deploy waybar config files
-  ansible.builtin.copy:
-    src: "{{ dotfiles_repo_root }}/{{ item.src }}"
-    dest: "{{ item.dest }}"
-    mode: '0644'
-    backup: true
-  loop: "{{ waybar_config_files }}"
+# desktop/waybar/tasks/config.yml — STUB
+- name: waybar config — stub
+  ansible.builtin.debug:
+    msg: "spark ~ desktop/waybar >> config stub, no-op // %DORMANT%"
   tags: [desktop, waybar, config]

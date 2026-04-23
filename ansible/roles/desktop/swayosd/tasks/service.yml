@@ -6,6 +6,6 @@
   ansible.builtin.systemd:
     name: swayosd-libinput-backend.service
     enabled: true
-    scope: user
-  become: false
+    scope: system
+  become: true
   tags: [desktop, swayosd, service]

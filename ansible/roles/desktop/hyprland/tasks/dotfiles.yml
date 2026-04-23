@@ -1,12 +1,7 @@
 ---
-# desktop/hyprland/tasks/dotfiles.yml
-# Deploys hyprland scripts to ~/.config/hypr/scripts/ with executable bit
-
-- name: Deploy hypr scripts
-  ansible.builtin.copy:
-    src: "{{ dotfiles_repo_root }}/{{ item.src }}"
-    dest: "{{ item.dest }}"
-    mode: '0755'
-    backup: true
-  loop: "{{ hypr_scripts }}"
+# desktop/hyprland/tasks/dotfiles.yml — STUB
+# This task file will symlink dotfiles/hyprland/ → ~/.config/hypr/
+- name: hyprland dotfiles — stub
+  ansible.builtin.debug:
+    msg: "spark ~ desktop/hyprland >> dotfiles stub, no-op // %DORMANT%"
   tags: [desktop, hyprland, dotfiles]

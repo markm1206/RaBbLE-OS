@@ -5,7 +5,7 @@
 # Version: 0.0.1
 #
 # Curl install (HTTPS clone — no SSH key required):
-#   curl -fsSL https://raw.githubusercontent.com/markm1206/RaBbLE-OS/main/RaBbLE-OS-Install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/markm1206/RaBbLE-OS/RaBbLE/epoch-I/RaBbLE-OS-Install.sh | bash
 #
 # Local run (SSH clone — SSH key must already be registered):
 #   bash RaBbLE-OS-Install.sh
@@ -27,6 +27,7 @@ RABBLE_OS_VERSION="0.0.1"
 # After install, the SSH key setup converts your working copy remote to SSH if desired.
 # Override with: RABBLE_OS_REPO=git@github.com:markm1206/RaBbLE-OS.git bash install.sh
 RABBLE_OS_REPO="${RABBLE_OS_REPO:-https://github.com/markm1206/RaBbLE-OS.git}"
+RABBLE_OS_BRANCH="${RABBLE_OS_BRANCH:-RaBbLE/epoch-I}"
 RABBLE_OS_DIR="${RABBLE_OS_DIR:-$HOME/RaBbLE-OS}"
 MIN_FEDORA_VERSION=43
 SSH_CONFIG="$HOME/.ssh/config"
@@ -301,17 +302,22 @@ clone_repo() {
 
     if [[ -d "$RABBLE_OS_DIR/.git" ]]; then
         warn "RaBbLE-OS repo already exists at: ${RABBLE_OS_DIR}"
-        info "Pulling latest changes..."
-        git -C "$RABBLE_OS_DIR" pull origin main || \
+        info "Updating branch: ${RABBLE_OS_BRANCH}"
+        git -C "$RABBLE_OS_DIR" fetch origin "$RABBLE_OS_BRANCH" || \
+            warn "Fetch failed — continuing with existing local copy."
+        git -C "$RABBLE_OS_DIR" checkout "$RABBLE_OS_BRANCH" || \
+            warn "Branch checkout failed — continuing with existing local branch."
+        git -C "$RABBLE_OS_DIR" pull origin "$RABBLE_OS_BRANCH" || \
             warn "Pull failed — continuing with existing local copy."
         success "Repository up-to-date."
         return 0
     fi
 
     info "Cloning from: ${RABBLE_OS_REPO}"
+    info "Branch      : ${RABBLE_OS_BRANCH}"
     info "Destination : ${RABBLE_OS_DIR}"
 
-    git clone "$RABBLE_OS_REPO" "$RABBLE_OS_DIR" || \
+    git clone --branch "$RABBLE_OS_BRANCH" --single-branch "$RABBLE_OS_REPO" "$RABBLE_OS_DIR" || \
         error "Clone failed.\n  Repo : ${RABBLE_OS_REPO}\n  Check your internet connection and that the URL is correct.\n  For SSH clones, ensure your key is registered: ssh -T git@github.com"
 
     success "Repository cloned to: ${RABBLE_OS_DIR}"

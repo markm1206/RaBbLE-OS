@@ -1,3 +1,12 @@
 ---
-# handlers/main.yml — no handlers yet
-# Common handler to add: systemctl restart sddm
+- name: reload logind
+  ansible.builtin.systemd:
+    name: systemd-logind
+    state: reloaded
+  become: true
+
+- name: restart sddm
+  ansible.builtin.systemd:
+    name: sddm
+    state: restarted
+  become: true

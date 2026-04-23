@@ -1,6 +1,11 @@
 ---
-# apps/tasks/packages.yml — STUB
-- name: apps packages — stub
-  ansible.builtin.debug:
-    msg: "spark ~ apps >> packages stub, no-op // %DORMANT%"
+# apps/tasks/packages.yml
+- name: apps packages | install baseline desktop apps
+  ansible.builtin.dnf:
+    name:
+      - dolphin
+      - ark
+      - ffmpegthumbs
+      - kio-extras
+    state: present
   tags: [apps, packages]

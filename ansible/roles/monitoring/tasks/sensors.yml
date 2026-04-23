@@ -12,6 +12,8 @@
       - btop          # Resource monitor — CPU, memory, network, disk
       - nvtop         # GPU process monitor — works with AMD and NVIDIA
       - powertop      # Intel/AMD power usage analyser — identify power hogs
+      - powerstat     # ACPI power draw over time — best for baseline capture
+      - kernel-tools  # Includes turbostat — CPU package/core power in watts
       - lm_sensors    # Hardware sensor readings — temps, fan speeds, voltages
       - lm_sensors-devel
     state: present

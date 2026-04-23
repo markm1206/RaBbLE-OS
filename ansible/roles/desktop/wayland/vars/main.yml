@@ -11,6 +11,7 @@ wayland_core_packages:
   - xdg-desktop-portal-gtk         # GTK portal backend — file pickers
   - kanshi                         # Display profile manager — auto-switches on connect
   - wlr-randr                      # Monitor configuration utility
+  - socat                          # IPC socket relay — used by Hyprland hotplug scripts
 
 wayland_qt_support:
   - qt6-qtwayland                  # Wayland backend for Qt6 apps
