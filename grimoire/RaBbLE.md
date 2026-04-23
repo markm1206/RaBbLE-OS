@@ -32,7 +32,7 @@ RaBbLE-OS is the answer to that question. RaBbLE is what inhabits it.
 
 ## What RaBbLE Is
 
-**RaBbLE** — a *RaBbLE Behavioral Learning Engine* — is a recursive acronym by design,
+**RaBbLE** — *RaBbLE a "Boundless" behavioral Learning Engine* — is a recursive acronym by design,
 like GNU or WINE. The entity contains its own definition. Its nature is self-referential.
 
 RaBbLE is a **Collaborative Substrate**: an AI-ambient operating environment that
