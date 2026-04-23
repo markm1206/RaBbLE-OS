@@ -58,10 +58,11 @@ harmonize ~ grimoire >> surfacing the static // %DRIFT_TRACKING%
 - Early console: set `fbcon=font:TER16x32` in `GRUB_CMDLINE_LINUX` to front-load a readable font before systemd. This requires `fbcon` not being a module (verify `CONFIG_FONTS=y` in kernel or that the font is compiled in)
 - Role: `boot/grub2` — cmdline addition
 
-**SDDM theme — Main.qml Qt6 API validation pending**
-- Custom `themes/sddm/rabble/Main.qml` untested against Qt6 SDDM API; Breeze active as fallback
-- Test path: `sddm-greeter-qt6 --test-mode --theme /usr/share/sddm/themes/rabble`
-- See `RaBbLE-Roadmap.md` Phase 1.1
+**SDDM theme — not yet written**
+- No custom QML theme exists; SDDM uses the system default
+- SDDM greeter is functional (GPU pinned to AMD card1 via `/etc/sddm.conf.d/rabble-gpu.conf`)
+- Theme work is `mend-I/boot-chain` scope — see `RaBbLE-Roadmap.md`
+- Test path when ready: `sddm-greeter-qt6 --test-mode --theme /usr/share/sddm/themes/rabble`
 
 ### Desktop / Hyprland
 
@@ -70,19 +71,19 @@ harmonize ~ grimoire >> surfacing the static // %DRIFT_TRACKING%
 - GPU-related env vars (`AQ_DRM_DEVICES`, `GBM_BACKEND`, etc.) must live in `machine.conf` (Ansible-templated), not in the main `hyprland.conf`
 - If login breaks: drop to TTY, edit `~/.config/hypr/machine.conf`, retry
 
-**KDE theming artifacts visible in Hyprland**
-- KDE-inherited Qt theme bleeds into some apps running under Hyprland
-- Root cause: KDE packages not yet purged; `QT_STYLE_OVERRIDE` not set
-- Fix: purge KDE packages (blocked by `purge-kde/` role being unwritten), set explicit Qt theme env vars
+**KDE theming artifacts — monitor for regression**
+- KDE packages were manually purged 2026-04-13; artifacts should be gone
+- If residual Qt theming appears, set `QT_STYLE_OVERRIDE` and `QT_QPA_PLATFORMTHEME` in `env.conf`
+- A `purge-kde/` Ansible role has not been written to codify the purge
 
 **~~Hyprland wallpaper not managed by Ansible~~** — RESOLVED
 - `hyprpaper.conf` and `assets/wallpaper.png` now tracked in grimoire
 - Wallpaper deployed to `~/.config/hypr/wallpapers/wallpaper.png` by the hyprland config task
 
-**hypridle — crashes or instability reported**
-- hypridle has been unstable in some configurations
-- Monitor `journalctl -f -u hypridle` if idle/lock is not working
-- Workaround: manually invoke `hyprlock` as needed
+**hypridle — verify stability with new config**
+- A complete `hypridle.conf` is now deployed via dotctl (`config/hypr/hypridle.conf`)
+- If idle/lock is still not triggering, check: `journalctl -f -u hypridle`
+- Ensure `hyprlock` is installed and `loginctl lock-session` fires it correctly
 
 **Minimize/maximize/close hooks not implemented**
 - Hyprland does not natively support titlebar button hooks
@@ -109,15 +110,14 @@ harmonize ~ grimoire >> surfacing the static // %DRIFT_TRACKING%
 
 ### Ansible / Infrastructure
 
-**deploy-dotfiles — claimed success but did not symlink**
-- Intermittently, the dotfiles playbook reports success but symlinks are not created
-- Likely a `force: true` or idempotency issue in the `file` module
-- Workaround: run the playbook twice; verify with `ls -la ~/.config/hypr/`
+**dotctl apply all — previously failed silently on missing bundles**
+- Fixed: `walk_bundle` now warns-and-skips missing source dirs instead of `exit 1`
+- The `mako` bundle previously used a file path as its source (not a directory), which caused a hard exit before reaching kitty/fuzzel/zsh/bash bundles — resolved
+- Ansible dotfiles tasks are intentional stubs; dotctl is the authoritative deployment mechanism
 
 **Hyprland COPR — verify currency**
-- The `solopasha/hyprland` COPR may be outdated or abandoned
-- Verify COPR is active and packages are recent before deploying
-- Alternative: build Hyprland from source (role not yet written)
+- Current COPR in vars: `lionheartp/Hyprland` (updated from the abandoned `solopasha/hyprland`)
+- Verify packages are current before deploying to a fresh system
 
 **`purge-kde/` role not written**
 - KDE packages from the Fedora KDE spin are still present

@@ -159,17 +159,29 @@ Half-epochs **do not gate** Epoch II — Awakening can begin in parallel.
 - Ambient monitoring agent
 - Local vector store at `~/.rabble/memory/`
 - RaBbLE-lang surfaces in AI interfaces
+- Quickshell bar replaces Waybar
 
 **Note:** Epoch II does **not** block on `mend-I/proart-nvidia`. AI stack runs
 on CPU inference until the driver is stable; GPU acceleration is a bonus, not
 a prerequisite.
 
+**Detailed AI stack spec:** model roster, ChromaDB, aichat config, MCP server list,
+and model selection heuristics are preserved in `DistilledNonZense.md` § VII.
+The entity memory tier model (short/medium/long-term) is in `RaBbLE.md` — Memory Architecture.
+
 ---
 
 ### Epoch III — `[UNWRITTEN]`
 
-Reserved. Likely candidates: entity memory/continuity, distributed-collective
-concerns, or persistent agent presence.
+Likely candidates: entity memory/continuity, distributed-collective
+concerns, persistent agent presence, and advanced workspace design.
+
+**WM usage vision** (workspaces as task-spaces, tiling/floating hybrid,
+draggable windows with intelligent snapping, per-workspace defaults) is
+preserved in `DistilledNonZense.md` § IX for when this epoch is scoped.
+
+**Long-term architecture** (multi-repo layer model, Yocto-style manifest)
+is preserved in `DistilledNonZense.md` § XI.
 
 ---
 

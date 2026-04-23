@@ -4,7 +4,7 @@ This file provides guidance to Ai coding agents when working with code in this r
 
 ## What is RaBbLE-OS?
 
-RaBbLE-OS is an Ansible-driven system configuration and deployment framework that transforms a Fedora 43 Sway spin into a bespoke Wayland desktop environment called RaBbLE-OS. The stack centers on Hyprland as the compositor and Quickshell for the UI layer. It is designed to be fully reproducible — the grimoire (this repository) is the authoritative configuration store.
+RaBbLE-OS is an Ansible-driven system configuration and deployment framework that transforms a Fedora 43 Sway spin into a bespoke Wayland desktop environment called RaBbLE-OS. The stack centers on Hyprland as the compositor and Waybar as the status bar. Quickshell is planned for Epoch II. It is designed to be fully reproducible — the grimoire (this repository) is the authoritative configuration store.
 
 ## Entry Points
 

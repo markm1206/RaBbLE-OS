@@ -410,6 +410,27 @@ All vertices should be draggable to resize the tile mosaic.
 
 ---
 
+## XI. Future Architecture — Multi-Repo Layer Model
+
+*Removed from `Architecture.md` — this is aspirational, not current state.*
+
+When the project matures, the layer model maps cleanly to separate repositories:
+
+```
+rabble-os-base/         ← Layer 0
+rabble-os-hardware/     ← Layer 1, hardware profiles
+rabble-os-bootchain/    ← Layer 2, GRUB/Plymouth/SDDM
+rabble-os-desktop/      ← Layer 3, Hyprland + theme
+rabble-os-apps/         ← Layer 4, tooling
+rabble-os-entity/       ← Layer 5, AI stack
+rabble-os-manifest/     ← top-level, pulls all layers + machine config
+```
+
+The long-term vision is a Yocto-style model where layers live in separate repositories
+pulled by a manifest. For now, all layers live in this single repo.
+
+---
+
 ```
 transcribe ~ grimoire >> all entropy mapped, deprecated substrate preserved // %LEGACY_FULLY_PRESERVED%
 ```
