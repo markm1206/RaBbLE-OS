@@ -2,14 +2,17 @@
 # desktop/shell/zsh/tasks/packages.yml
 - name: Install ZSH and plugins
   ansible.builtin.dnf:
-    name:
-      - zsh
-      - zsh-syntax-highlighting
-      - zsh-autosuggestions
-      # powerlevel10k: try standard package name; fallback = COPR praiskup/powerlevel10k
-      # dnf copr enable praiskup/powerlevel10k && dnf install zsh-theme-powerlevel10k
+    name: "{{ zsh_packages }}"
     state: present
   become: true
+  tags: [desktop, shell, zsh, packages]
+
+- name: Clone powerlevel10k
+  ansible.builtin.git:
+    repo: https://github.com/romkatv/powerlevel10k.git
+    dest: "{{ rabble_home }}/.local/share/powerlevel10k"
+    depth: 1
+    update: false
   tags: [desktop, shell, zsh, packages]
 
 - name: Set ZSH as default shell for {{ rabble_user }}

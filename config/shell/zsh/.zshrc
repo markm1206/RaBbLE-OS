@@ -70,6 +70,9 @@ ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=#6b6880"
 ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=40
 
+# ── PATH ──────────────────────────────────────────────────────────────────────
+export PATH="$HOME/.local/bin:$PATH"
+
 # ── Environment ───────────────────────────────────────────────────────────────
 export EDITOR="nvim"
 export VISUAL="nvim"
@@ -93,15 +96,40 @@ export RABBLE_ROOT="${HOME}/RaBbLE-OS"
 [[ -f "${ZDOTDIR:-$HOME/.config/zsh}/functions.zsh" ]] && \
     source "${ZDOTDIR:-$HOME/.config/zsh}/functions.zsh"
 
-# ── Prompt — Powerlevel10k ────────────────────────────────────────────────────
-# dnf install zsh-theme-powerlevel10k  (or from COPR: praiskup/powerlevel10k)
+# ── Prompt — Powerlevel10k (with hand-rolled fallback) ───────────────────────
+# Installed via: git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ~/.local/share/powerlevel10k
+_p10k_loaded=0
 for _p10k_path in \
     /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme \
     /usr/share/powerlevel10k/powerlevel10k.zsh-theme \
     "${HOME}/.local/share/powerlevel10k/powerlevel10k.zsh-theme"; do
-    [[ -f "$_p10k_path" ]] && source "$_p10k_path" && break
+    if [[ -f "$_p10k_path" ]]; then
+        source "$_p10k_path"
+        [[ -f "${ZDOTDIR:-$HOME/.config/zsh}/p10k.zsh" ]] && \
+            source "${ZDOTDIR:-$HOME/.config/zsh}/p10k.zsh"
+        _p10k_loaded=1
+        break
+    fi
 done
 unset _p10k_path
 
-[[ -f "${ZDOTDIR:-$HOME/.config/zsh}/p10k.zsh" ]] && \
-    source "${ZDOTDIR:-$HOME/.config/zsh}/p10k.zsh"
+if (( ! _p10k_loaded )); then
+    _rabble_zsh_prompt() {
+        local _exit=$?
+        local M=$'%F{198}'   # magenta  #ff2d78
+        local C=$'%F{51}'    # cyan     #00f5ff
+        local V=$'%F{135}'   # violet   #bf5fff
+        local R=$'%F{160}'   # red
+        local D=$'%F{97}'    # muted
+        local N=$'%f'
+        local git_seg=''
+        local branch
+        branch=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
+        [[ -n "$branch" ]] && git_seg=" ${D}on${N} ${C}${branch}${N}"
+        local char_color; (( _exit == 0 )) && char_color="$M" || char_color="$R"
+        PROMPT="${D}╭─${N} ${V}%~${N}${git_seg}
+${D}╰─${N} ${char_color}❯${N} "
+    }
+    precmd_functions+=(_rabble_zsh_prompt)
+fi
+unset _p10k_loaded

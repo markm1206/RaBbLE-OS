@@ -23,6 +23,9 @@ shopt -s nocaseglob      # case-insensitive globbing
 [[ -r /usr/share/bash-completion/bash_completion ]] && \
     source /usr/share/bash-completion/bash_completion
 
+# ── PATH ──────────────────────────────────────────────────────────────────────
+export PATH="$HOME/.local/bin:$PATH"
+
 # ── Environment ───────────────────────────────────────────────────────────────
 export EDITOR="nvim"
 export VISUAL="nvim"
