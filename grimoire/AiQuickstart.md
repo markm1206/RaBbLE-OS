@@ -4,7 +4,7 @@ This file provides guidance to Ai coding agents when working with code in this r
 
 ## What is RaBbLE-OS?
 
-RaBbLE-OS is an Ansible-driven system configuration and deployment framework that transforms a Fedora 43 Sway spin into a bespoke Wayland desktop environment called RaBbLE-OS. The stack centers on Hyprland as the compositor and Quickshell for the UI layer. It is designed to be fully reproducible — the grimoire (this repository) is the authoritative configuration store.
+RaBbLE-OS is an Ansible-driven system configuration and deployment framework that transforms a Fedora 43 Sway spin into a bespoke Wayland desktop environment called RaBbLE-OS. The stack centers on Hyprland as the compositor and Waybar as the status bar. Quickshell is planned for Epoch II. It is designed to be fully reproducible — the grimoire (this repository) is the authoritative configuration store.
 
 ## Entry Points
 
@@ -13,12 +13,12 @@ There are two installation paths:
 **Fresh install (on a bare Fedora 43+ system):**
 ```bash
 # Via curl (no SSH key required):
-curl -fsSL https://raw.githubusercontent.com/markm1206/RaBbLE-OS/main/RaBbLE-OS-Install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/markm1206/RaBbLE-OS/RaBbLE/epoch-I/RaBbLE-OS-Install.sh | bash
 
 # Or locally:
 bash RaBbLE-OS-Install.sh
 ```
-This installs git/ansible/pip3, sets up SSH keys, clones the repo, then hands off to Bootstrap.
+This installs git/ansible/pip3, sets up SSH keys, clones the `RaBbLE/epoch-I` branch, then hands off to Bootstrap.
 
 **On an already-cloned repo:**
 ```bash

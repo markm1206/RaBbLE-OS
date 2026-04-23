@@ -154,9 +154,8 @@ rabble_palette.red      →  Errors everywhere
 ## Cross-Reference
 
 - Palette deployed via Ansible: `ansible/inventory/group_vars/all.yml`
-- Theming guide and component locations: `grimoire/Theming.md`
-- Architecture palette propagation: `grimoire/Architecture.md` → HiDPI Variable Flow
-- Visual layer by layer: `grimoire/BootFlow.md`
+- Per-component dotfile locations: `grimoire/Architecture.md` → Bundle Map
+- Shell and terminal color environment: `grimoire/RaBbLE-OS-ShellGuide.md`
 
 ---
 
