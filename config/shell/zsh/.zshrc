@@ -1,0 +1,107 @@
+# ~/.config/zsh/.zshrc — RaBbLE-OS ZSH configuration
+# ZDOTDIR=$HOME/.config/zsh is set in ~/.zshenv
+
+# ── Powerlevel10k instant prompt (must be first, before any output) ───────────
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+    source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+# ── History ───────────────────────────────────────────────────────────────────
+HISTFILE="${ZDOTDIR:-$HOME/.config/zsh}/.zsh_history"
+HISTSIZE=50000
+SAVEHIST=50000
+setopt HIST_IGNORE_DUPS       # skip storing if same as previous
+setopt HIST_IGNORE_ALL_DUPS   # remove older duplicates from list
+setopt HIST_IGNORE_SPACE      # skip lines starting with space
+setopt HIST_SAVE_NO_DUPS      # no duplicates in the history file
+setopt HIST_REDUCE_BLANKS     # strip extra blanks before saving
+setopt SHARE_HISTORY          # share history across all sessions
+setopt EXTENDED_HISTORY       # store timestamp and elapsed time
+setopt INC_APPEND_HISTORY     # write to history immediately, not on exit
+
+# ── Options ───────────────────────────────────────────────────────────────────
+setopt AUTOCD                 # type a dir name to cd into it
+setopt AUTO_PUSHD             # push the old dir onto the stack on cd
+setopt PUSHD_IGNORE_DUPS      # no duplicate dirs on the stack
+setopt PUSHD_SILENT           # don't print the stack on pushd/popd
+setopt CORRECT                # suggest corrections for commands
+setopt INTERACTIVE_COMMENTS   # allow # comments in interactive shell
+setopt EXTENDED_GLOB          # extended glob patterns
+setopt NO_BEEP                # no terminal bell
+
+# ── Completion ────────────────────────────────────────────────────────────────
+autoload -Uz compinit
+() {
+    local zcd="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
+    mkdir -p "$zcd"
+    compinit -d "$zcd/zcompdump-$ZSH_VERSION"
+}
+
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+zstyle ':completion:*' use-cache yes
+zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompcache"
+zstyle ':completion:*:descriptions' format ' %F{#bf5fff}── %d ──%f'
+zstyle ':completion:*:warnings' format ' %F{#e05c6f}no matches%f'
+zstyle ':completion:*' group-name ''
+
+# ── Key bindings ──────────────────────────────────────────────────────────────
+bindkey -e                                          # emacs mode (ctrl+a/e/r/w)
+bindkey '^[[A' history-beginning-search-backward    # up arrow: history search
+bindkey '^[[B' history-beginning-search-forward     # down arrow: history search
+autoload -Uz history-beginning-search-menu
+autoload -Uz up-line-or-beginning-search
+autoload -Uz down-line-or-beginning-search
+zle -N up-line-or-beginning-search
+zle -N down-line-or-beginning-search
+bindkey '^[[A' up-line-or-beginning-search
+bindkey '^[[B' down-line-or-beginning-search
+
+# ── Plugins (Fedora system packages) ─────────────────────────────────────────
+# dnf install zsh-syntax-highlighting zsh-autosuggestions
+[[ -f /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && \
+    source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+[[ -f /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && \
+    source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+
+ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=#6b6880"
+ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=40
+
+# ── Environment ───────────────────────────────────────────────────────────────
+export EDITOR="nvim"
+export VISUAL="nvim"
+export PAGER="less"
+export LESS="-R --mouse"
+export MANPAGER="sh -c 'col -bx | bat -l man -p'"
+export XDG_CONFIG_HOME="${HOME}/.config"
+export XDG_CACHE_HOME="${HOME}/.cache"
+export XDG_DATA_HOME="${HOME}/.local/share"
+export RABBLE_ROOT="${HOME}/RaBbLE-OS"
+
+# ── RaBbLE color environment ──────────────────────────────────────────────────
+[[ -f "${ZDOTDIR:-$HOME/.config/zsh}/colors.zsh" ]] && \
+    source "${ZDOTDIR:-$HOME/.config/zsh}/colors.zsh"
+
+# ── Aliases ───────────────────────────────────────────────────────────────────
+[[ -f "${ZDOTDIR:-$HOME/.config/zsh}/aliases.zsh" ]] && \
+    source "${ZDOTDIR:-$HOME/.config/zsh}/aliases.zsh"
+
+# ── Functions ─────────────────────────────────────────────────────────────────
+[[ -f "${ZDOTDIR:-$HOME/.config/zsh}/functions.zsh" ]] && \
+    source "${ZDOTDIR:-$HOME/.config/zsh}/functions.zsh"
+
+# ── Prompt — Powerlevel10k ────────────────────────────────────────────────────
+# dnf install zsh-theme-powerlevel10k  (or from COPR: praiskup/powerlevel10k)
+for _p10k_path in \
+    /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme \
+    /usr/share/powerlevel10k/powerlevel10k.zsh-theme \
+    "${HOME}/.local/share/powerlevel10k/powerlevel10k.zsh-theme"; do
+    [[ -f "$_p10k_path" ]] && source "$_p10k_path" && break
+done
+unset _p10k_path
+
+[[ -f "${ZDOTDIR:-$HOME/.config/zsh}/p10k.zsh" ]] && \
+    source "${ZDOTDIR:-$HOME/.config/zsh}/p10k.zsh"

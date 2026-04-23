@@ -1,6 +1,20 @@
 ---
-# desktop/shell/zsh/tasks/packages.yml — STUB
-- name: zsh packages — stub
-  ansible.builtin.debug:
-    msg: "spark ~ desktop/shell/zsh >> packages stub, no-op // %DORMANT%"
+# desktop/shell/zsh/tasks/packages.yml
+- name: Install ZSH and plugins
+  ansible.builtin.dnf:
+    name:
+      - zsh
+      - zsh-syntax-highlighting
+      - zsh-autosuggestions
+      # powerlevel10k: try standard package name; fallback = COPR praiskup/powerlevel10k
+      # dnf copr enable praiskup/powerlevel10k && dnf install zsh-theme-powerlevel10k
+    state: present
+  become: true
+  tags: [desktop, shell, zsh, packages]
+
+- name: Set ZSH as default shell for {{ rabble_user }}
+  ansible.builtin.user:
+    name: "{{ rabble_user }}"
+    shell: /bin/zsh
+  become: true
   tags: [desktop, shell, zsh, packages]

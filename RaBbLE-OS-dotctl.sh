@@ -49,9 +49,11 @@ declare -A BUNDLE_SRC=(
   [wallpapers]="config/wallpapers"
   [waybar]="config/waybar"
   [quickshell]="config/quickshell"
+  [kitty]="config/kitty"
+  [fuzzel]="config/fuzzel"
   [zsh]="config/shell/zsh"
   [bash]="config/shell/bash"
-  [mako]="config/shell/mako.conf"
+  [mako]="config/mako"
 )
 
 declare -A BUNDLE_DEST=(
@@ -59,9 +61,11 @@ declare -A BUNDLE_DEST=(
   [wallpapers]="${HOME}/.config/wallpapers"
   [waybar]="${HOME}/.config/waybar"
   [quickshell]="${HOME}/.config/quickshell"
+  [kitty]="${HOME}/.config/kitty"
+  [fuzzel]="${HOME}/.config/fuzzel"
   [zsh]="${HOME}/.config/zsh"
   [bash]="${HOME}"
-  [mako]="${HOME}/.config/mako/config"
+  [mako]="${HOME}/.config/mako"
 )
 
 declare -A BUNDLE_DESC=(
@@ -69,18 +73,22 @@ declare -A BUNDLE_DESC=(
   [wallpapers]="Wallpaper assets"
   [waybar]="Waybar status bar config + scripts"
   [quickshell]="Quickshell QML bar & launcher"
-  [zsh]="Zsh config (Zinit + Powerlevel10k)"
-  [bash]="Bash config and aliases"
-  [mako]="Mako notification daemon config"
+  [kitty]="Kitty terminal emulator config"
+  [fuzzel]="Fuzzel launcher config"
+  [zsh]="ZSH config (Powerlevel10k + plugins)"
+  [bash]="Bash config, aliases, and .zshenv"
+  [mako]="Mako notification daemon config (config/mako/config → ~/.config/mako/config)"
 )
 
-BUNDLE_ORDER=(hypr wallpapers waybar quickshell zsh bash mako)
+BUNDLE_ORDER=(hypr wallpapers waybar quickshell kitty fuzzel zsh bash mako)
 
 declare -A BUNDLE_RELOAD=(
   [hypr]="hyprctl reload"
   [wallpapers]="pkill -x hyprpaper || true; setsid --fork hyprpaper &>/dev/null"
   [waybar]="pkill -x waybar || true; setsid --fork waybar &>/dev/null"
   [quickshell]="pkill -x quickshell || true; setsid --fork quickshell &>/dev/null"
+  [kitty]="echo 'kitty config live-reloads automatically (ctrl+shift+f5 to force)'"
+  [fuzzel]="echo 'fuzzel reads config on each launch — no reload needed'"
   [zsh]="source ${HOME}/.config/zsh/.zshrc 2>/dev/null || true"
   [bash]="source ${HOME}/.bashrc 2>/dev/null || true"
   [mako]="makoctl reload"
@@ -109,7 +117,10 @@ walk_bundle() {
   local src_root="${SCRIPT_DIR}/${BUNDLE_SRC[$bundle]}"
   local dest_root="${BUNDLE_DEST[$bundle]}"
 
-  [[ -d "$src_root" ]] || fail "Bundle source not found: ${src_root}"
+  if [[ ! -d "$src_root" ]]; then
+    warn "Bundle '${bundle}' source not found, skipping: ${src_root}"
+    return 0
+  fi
 
   while IFS= read -r -d '' src_file; do
     local rel="${src_file#${src_root}/}"
