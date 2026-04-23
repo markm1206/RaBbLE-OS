@@ -79,12 +79,176 @@ proprietary driver work is deferred to `mend-I/*` half-epochs.
 - SwayOSD service scope fix (user → system)
 - powertop auto-tune safe for live playbook runs
 
+**Landed on New Horizons since last Epoch I sync (needs porting):**
+- Shell stack: ZSH + Bash configs, p10k, colors, aliases, functions
+- Terminal: Kitty config (RaBbLE palette)
+- Launcher: Fuzzel config (RaBbLE palette)
+- Notifications: Mako config (urgency-tiered neon borders)
+- Idle/lock: canonical hypridle.conf + hyprlock.conf with clock overlay
+- Lid suspend: logind drop-in (99-rabble-lid.conf) + Ansible task
+- dotctl: kitty/fuzzel/mako bundles added; missing-bundle skip fix
+- Grimoire: all docs renamed RaBbLE-OS-*, Architecture rewritten, RaBbLE.md distilled
+
 **Remaining for Epoch I landing:**
-- [ ] Port proart stub scaffolding into `RaBbLE/epoch-I` (site.yml role resolution)
-- [ ] Hypridle configuration restored (addresses video-playback sign-out)
-- [ ] Hyprlock configuration restored
-- [ ] Portability smoke-test on generic_x64 clean install
-- [ ] Fresh-Fedora-43 end-to-end verification (install.sh → layerctl apply all)
+- [ ] Port 4 packages from New Horizons → Epoch I (see Assembly Plan below)
+- [ ] Portability smoke-test: fresh Fedora 43 bootstrap end-to-end
+- [ ] Verify all checklist items in Bootstrap Checklist below
+- [ ] Mark all passing layers `%STABLE%` in Layer State Map
+
+---
+
+### Epoch I — Assembly Plan
+
+**Strategy:** Use `git checkout RaBbLE-OS-New-Horizons -- <paths>` to bring files
+into Epoch I without importing dev history. Commit in dependency order.
+Do NOT cherry-pick — the branches have divergent history.
+
+After Epoch I lands on main: `git rebase main` on New Horizons to restore shared history.
+
+#### What stays in New Horizons / mend-I (NOT for Epoch I)
+
+| Files | Reason |
+|-------|--------|
+| `ansible/roles/hardware/x64/asus_proart_p16/tasks/nvidia.yml` | mend-I/proart-nvidia |
+| `ansible/roles/hardware/x64/asus_proart_p16/handlers/main.yml` | mend-I/proart-nvidia |
+| `ansible/roles/hardware/x64/asus_proart_p16/tasks/supergfx.yml` | mend-I/proart-nvidia |
+
+#### Package 1 — control-plane
+
+```bash
+git checkout RaBbLE-OS-New-Horizons -- RaBbLE-OS-dotctl.sh .gitignore README.md
+```
+
+What changed: kitty/fuzzel/mako bundles added; mako fixed from file→directory;
+missing-bundle skip (walk_bundle warns instead of exit 1).
+
+Commit: `harmonize ~ control-plane >> dotctl bundles: kitty, fuzzel, mako; skip missing // %CONTROL_PLANE_LIVE%`
+
+#### Package 2 — ansible-roles
+
+```bash
+git checkout RaBbLE-OS-New-Horizons -- \
+  ansible/inventory/group_vars/all.yml \
+  ansible/roles/boot/session_manager/handlers/main.yml \
+  ansible/roles/boot/session_manager/tasks/config.yml \
+  ansible/roles/desktop/hyprland/tasks/config.yml \
+  ansible/roles/desktop/hyprland/tasks/dotfiles.yml \
+  ansible/roles/desktop/hyprland/vars/main.yml \
+  ansible/roles/desktop/shell/zsh/tasks/packages.yml \
+  ansible/roles/desktop/swayosd/tasks/service.yml \
+  ansible/roles/desktop/terminal/tasks/packages.yml \
+  ansible/roles/desktop/waybar/tasks/config.yml \
+  ansible/roles/desktop/waybar/tasks/dotfiles.yml \
+  ansible/roles/desktop/waybar/vars/main.yml \
+  ansible/roles/desktop/wayland/vars/main.yml
+```
+
+What changed: logind lid policy (session_manager); kitty + zsh packages wired (terminal,
+shell/zsh); swayosd service scope; waybar/hyprland vars updated for new config paths.
+
+Commit: `ingest ~ ansible-roles >> logind lid, kitty+zsh packages, waybar/hyprland vars // %ROLES_UPDATED%`
+
+#### Package 3 — config
+
+```bash
+git checkout RaBbLE-OS-New-Horizons -- \
+  config/hypr/ \
+  config/kitty/ \
+  config/fuzzel/ \
+  config/mako/ \
+  config/shell/ \
+  config/systemd/ \
+  config/wallpapers/
+```
+
+What changed: hypridle.conf (canonical, with suspend chain); hyprlock.conf (clock overlay,
+RaBbLE palette); autostart.conf (lid bindl removed — logind handles it); Kitty RaBbLE theme;
+Fuzzel RaBbLE theme; Mako urgency-tiered neon; full ZSH + Bash shell stack; logind drop-in.
+
+Commit: `ingest ~ config >> shell stack, kitty, fuzzel, mako, hypridle/lock, lid suspend // %CONFIG_COMPLETE%`
+
+#### Package 4 — grimoire
+
+```bash
+git checkout RaBbLE-OS-New-Horizons -- grimoire/
+git rm grimoire/Architecture.md
+git rm grimoire/components/RaBbLE.svg
+```
+
+What changed: docs renamed RaBbLE-OS-*; Architecture rewritten (current state only);
+KnownIssues updated; RaBbLE.md distilled to manifesto+lore; ShellGuide added;
+Roadmap cross-referenced to NonZense for future content.
+
+Commit: `harmonize ~ grimoire >> rename docs RaBbLE-OS-prefix; current-state only // %GRIMOIRE_CURRENT%`
+
+---
+
+### Bootstrap Checklist — Epoch I (Fedora 43)
+
+Run this after assembling the packages above. Record pass/fail against each item.
+Any failure becomes a `mend-I/*` issue or a blocker that holds epoch landing.
+
+#### Pre-Bootstrap
+
+- [ ] All 4 packages ported to `RaBbLE/epoch-I` and committed
+- [ ] `git log --oneline RaBbLE/epoch-I` — verify clean package history
+- [ ] Dry run on current machine: `layerctl apply all --check`
+
+#### Install Sequence
+
+- [ ] Fresh Fedora 43 base (clean install or snapshot at post-install state)
+- [ ] `curl -fsSL .../RaBbLE-OS-Install.sh | bash` — or clone + `bash RaBbLE-OS-Bootstrap.sh`
+- [ ] `ansible-galaxy collection install -r ansible/requirements.yml`
+- [ ] `./RaBbLE-OS-layerctl.sh apply all` — note any errors, do not skip them
+- [ ] `./RaBbLE-OS-dotctl.sh apply all`
+- [ ] Reboot
+
+#### Session Verification
+
+- [ ] SDDM greeter appears (not dropped to TTY)
+- [ ] Hyprland session starts — wallpaper visible
+- [ ] Waybar renders (clock, battery, network, workspaces)
+- [ ] Function keys: volume, brightness, mic-mute (swayosd OSD fires)
+- [ ] `Super+Space` → Fuzzel launcher opens
+- [ ] Terminal opens (Kitty, RaBbLE palette visible)
+- [ ] Screenshots: Print key (region), Shift+Print (full)
+- [ ] `notify-send "test" "body"` → Mako notification fires
+- [ ] Hyprlock triggers after 5 min idle (or `loginctl lock-session`)
+- [ ] HDMI hotplug (if second display available)
+
+#### Shell Verification
+
+- [ ] ZSH loads with p10k prompt (requires p10k installed — see packages)
+- [ ] Bash loads with RaBbLE two-line prompt
+- [ ] `ll`, `gs`, `rabble`, `rabble-dots` aliases work
+- [ ] `fcd`, `fe`, `extract` functions available in ZSH
+- [ ] `LS_COLORS`, `FZF_DEFAULT_OPTS`, `BAT_THEME` set (check `colors256`)
+
+#### Final Gate
+
+- [ ] `layerctl verify all` — all layers report `%STABLE%` or documented exception
+- [ ] Any new failures logged to `RaBbLE-OS-KnownIssues.md`
+- [ ] If all gates pass: land epoch to main
+  ```
+  git checkout main
+  git merge --squash RaBbLE/epoch-I
+  git commit -m "evolve ~ substrate >> epoch-I crystallized // %EPOCH_I_LANDED%"
+  git checkout RaBbLE-OS-New-Horizons
+  git rebase main
+  ```
+
+---
+
+### Fedora 44 Migration Plan
+
+Do NOT attempt on the same day as the Epoch I bootstrap. Validate F43 first.
+
+- [ ] Open `mend-I/fedora44` branch from New Horizons
+- [ ] Check COPR availability: `dnf copr enable lionheartp/Hyprland` on F44 — verify packages exist
+- [ ] Check SDDM Qt6 version bump on F44 (may affect greeter)
+- [ ] Run full `layerctl apply all` on F44, diff against F43 output
+- [ ] If clean: add F44 note to `AiQuickstart.md`, merge `mend-I/fedora44` → New Horizons
+- [ ] If breakage: file issues, fix in mend branch before promoting
 
 ---
 
@@ -193,80 +357,73 @@ RaBbLE-OS absorbs new tools, new models, new patterns. Never complete.
 
 ## Layer State Map
 
-### Layer 0 — Base `%DORMANT%` → Epoch I
+> **Key:** ✓ live  ✗ stub  ~ partial  → after assembly plan
 
-Core packages, repos, locale, fonts.
+### Layer 0 — Base
 
-| Role | Packages | Config | State | Target |
-|------|---------|--------|-------|--------|
-| core | ✗ STUB | ✗ STUB | %DORMANT% | Epoch I |
-
-**Note:** Scaffolded but empty. Base system relies on Fedora Sway spin defaults.
+| Role | Pkgs (epoch-I now) | Pkgs (after assembly) | Config | State |
+|------|-------------------|----------------------|--------|-------|
+| core | ✗ stub | ✗ stub | ✗ stub | %DORMANT% — relies on Fedora Sway spin defaults |
 
 ---
 
 ### Layer 1 — Hardware
 
-Hardware abstraction via host-group membership. Epoch I carries only scaffolds;
-activation work lives in `mend-I/*`.
-
-| Role | Packages | Config | State | Target |
-|------|---------|--------|-------|--------|
-| hardware/x64/asus_proart_p16 | ~ stub | ~ stub | %DORMANT% | Epoch I (scaffold) |
-| hardware/x64/asus_proart_p16/nvidia | ~ stub | — | %DORMANT% | mend-I/proart-nvidia |
-| hardware/x64/asus_proart_p16/supergfx | ~ stub | — | %DORMANT% | mend-I/proart-nvidia |
-| hardware/x64/asus_proart_p16/asusctl | ~ stub | — | %DORMANT% | mend-I/proart-nvidia |
-| hardware/x64/asus_proart_p16/npu | ~ stub | — | %DORMANT% | mend-I/xdna2-npu |
-| hardware/x64/generic | ✓ | ✓ | %DEPLOYABLE% | Epoch I |
+| Role | Pkgs | Config | State | Target |
+|------|------|--------|-------|--------|
+| hardware/x64/generic | ✓ | ✗ stub | %DORMANT% | Epoch I scaffold |
+| hardware/x64/asus_proart_p16 | ✗ stub | ✗ stub | %DORMANT% | Epoch I scaffold only |
+| asus_proart_p16/nvidia | ✗ stub | ✗ stub | %DORMANT% | mend-I/proart-nvidia |
+| asus_proart_p16/supergfx | ✗ stub | ✗ stub | %DORMANT% | mend-I/proart-nvidia |
+| asus_proart_p16/npu | ✗ stub | ✗ stub | %DORMANT% | mend-I/xdna2-npu |
 
 ---
 
-### Layer 2 — Boot `%TESTING_IN_PROCESS%` → Epoch I + mend-I/boot-chain
+### Layer 2 — Boot
 
-GRUB2 → Plymouth → SDDM.
-
-| Role | Packages | Config | State | Target |
-|------|---------|--------|-------|--------|
-| boot/grub2 | ✓ | ~ | %TESTING_IN_PROCESS% | mend-I/boot-chain |
-| boot/plymouth | ✓ | ~ | %DEPLOYABLE% | mend-I/boot-chain |
-| boot/session_manager | ✓ | ✓ | %STABLE% | Epoch I |
+| Role | Pkgs | Config | State | Target |
+|------|------|--------|-------|--------|
+| boot/grub2 | ✓ | ~ partial | %TESTING_IN_PROCESS% | mend-I/boot-chain |
+| boot/plymouth | ✓ | ~ partial | %TESTING_IN_PROCESS% | mend-I/boot-chain |
+| boot/session_manager | ✗ stub | ✗ stub → ✓ | %DORMANT% → %DEPLOYABLE% | Epoch I (logind lid config via assembly) |
 
 ---
 
-### Layer 3 — Desktop `%DEPLOYABLE%` → Epoch I
+### Layer 3 — Desktop
 
-Hyprland compositor + shell stack.
-
-| Role | Packages | Config | State | Target |
-|------|---------|--------|-------|--------|
-| desktop/hyprland | ✓ | ✓ | %DEPLOYABLE% | Epoch I |
-| desktop/wayland | ✓ | ✓ | %DEPLOYABLE% | Epoch I |
-| desktop/waybar | ✓ | ✓ | %DEPLOYABLE% | Epoch I |
-| desktop/shell/zsh | ✓ | ✓ | %STABLE% | Epoch I |
-| desktop/shell/bash | ✓ | ✓ | %STABLE% | Epoch I |
-| desktop/terminal | ✓ | ✓ | %STABLE% | Epoch I |
-| desktop/launcher | ✓ | ✓ | %DEPLOYABLE% | Epoch I |
-| desktop/screenshot | ✓ | ✓ | %STABLE% | Epoch I |
-| desktop/swayosd | ✓ | ✓ | %DEPLOYABLE% | Epoch I |
-| desktop/notifications | ✓ | ✓ | %DEPLOYABLE% | Epoch I |
-| desktop/network-applet | ✓ | ✓ | %DEPLOYABLE% | Epoch I |
-| desktop/quickshell | ✓ | ✓ | %HIGH_ENTROPY% | Epoch II (bar replacement) |
-| desktop/v4l2 | ✓ | ✓ | %DEPLOYABLE% | Epoch I |
-
-**Remaining for Epoch I:**
-- [ ] Hypridle configuration (restore from epoch-I branch)
-- [ ] Hyprlock configuration (restore from epoch-I branch)
-- [ ] Mouse settings (libinput scroll, sensitivity)
+| Role | Pkgs (now) | Pkgs (after) | Config (now) | Config (after) | State |
+|------|-----------|-------------|-------------|---------------|-------|
+| desktop/wayland | ✓ | ✓ | ~ partial | ~ partial | %DEPLOYABLE% |
+| desktop/hyprland | ✓ | ✓ | ✓ | ✓ updated | %DEPLOYABLE% |
+| desktop/waybar | ✓ | ✓ | ✓ | ✓ updated | %DEPLOYABLE% |
+| desktop/terminal | ✗ stub | ✓ kitty | ✗ stub | ✓ kitty.conf | %DORMANT% → %DEPLOYABLE% |
+| desktop/launcher | ✓ fuzzel | ✓ fuzzel | ✗ stub | ✓ fuzzel.ini | %DORMANT% → %DEPLOYABLE% |
+| desktop/notifications | ✓ mako | ✓ mako | ✗ stub | ✓ mako/config | %DORMANT% → %DEPLOYABLE% |
+| desktop/shell/zsh | ✗ stub | ✓ zsh+plugins | ✗ stub | ✓ full stack | %DORMANT% → %DEPLOYABLE% |
+| desktop/shell/bash | ✗ stub | ✗ stub | ✗ stub | ✓ .bashrc | %DORMANT% → %DEPLOYABLE% |
+| desktop/screenshot | ✓ | ✓ | ✓ | ✓ | %STABLE% |
+| desktop/swayosd | ✓ | ✓ | ✓ | ✓ updated | %DEPLOYABLE% |
+| desktop/network-applet | ✓ | ✓ | ✓ | ✓ | %DEPLOYABLE% |
+| desktop/v4l2 | ✓ | ✓ | ✓ | ✓ | %DEPLOYABLE% |
+| desktop/quickshell | ✓ pkgs | ✓ pkgs | ✗ build | ✗ build | %HIGH_ENTROPY% — Epoch II |
 
 ---
 
-### Layer 4 — Apps `%DEPLOYABLE%` → Epoch I
+### Layer 4 — Apps
 
-Dev tools, IDE, browsers.
+| Role | Pkgs | Config | State |
+|------|------|--------|-------|
+| apps | ✗ stub | ✗ stub | %DORMANT% — no packages defined yet |
 
-| Role | Packages | Config | State | Target |
-|------|---------|--------|-------|--------|
-| apps | ✓ | ✓ | %DEPLOYABLE% | Epoch I |
+---
+
+### Cross-cutting
+
+| Role | State | Notes |
+|------|-------|-------|
+| monitoring | %DEPLOYABLE% | btop, htop, powertop, lm_sensors live |
+| snapper | %DEPLOYABLE% | Btrfs snapshots wired |
+| runtime | %DORMANT% | XRT/CUDA/ROCm — mend-I/proart-nvidia + mend-I/xdna2-npu |
 
 ---
 
