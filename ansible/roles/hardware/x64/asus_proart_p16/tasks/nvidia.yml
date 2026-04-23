@@ -47,6 +47,30 @@
       options nvidia-drm fbdev=1
   notify: regenerate initramfs
 
+# ─── Step 1c: SDDM greeter GPU pin ───────────────────────────────
+# NVIDIA (card0) has no CRTCs in hybrid mode — sway finds no outputs and crashes.
+# Pin the SDDM greeter compositor to AMD (card1) so the login screen appears.
+- name: Create /etc/sddm.conf.d directory
+  file:
+    path: /etc/sddm.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Pin SDDM sway greeter to AMD card (card1)
+  copy:
+    dest: /etc/sddm.conf.d/rabble-gpu.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # RaBbLE-OS: Pin SDDM greeter compositor to AMD card (card1 / PCI 0000:65:00.0)
+      # NVIDIA (card0) has no CRTCs in Optimus hybrid mode — sway compositor crashes without this.
+      [Wayland]
+      CompositorCommand=env WLR_DRM_DEVICES=/dev/dri/card1 /usr/libexec/sddm-compositor-sway
+  notify: restart sddm
+
 # ─── Step 2: NVIDIA Driver Installation ──────────────────────────
 - name: Install akmod-nvidia (auto-rebuilds on kernel updates)
   dnf:

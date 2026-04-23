@@ -18,3 +18,8 @@
 - name: reload systemd
   systemd:
     daemon_reload: yes
+
+- name: restart sddm
+  systemd:
+    name: sddm
+    state: restarted
