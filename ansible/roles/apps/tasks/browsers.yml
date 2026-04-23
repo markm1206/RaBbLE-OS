@@ -1,0 +1,6 @@
+---
+# apps/tasks/browsers.yml — STUB
+- name: browsers — stub
+  ansible.builtin.debug:
+    msg: "spark ~ apps/browsers >> stub, no-op // %DORMANT%"
+  tags: [apps, browsers]

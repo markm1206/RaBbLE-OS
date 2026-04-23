@@ -1,0 +1,12 @@
+---
+# desktop/waybar/tasks/dotfiles.yml
+# Deploys waybar scripts to ~/.config/waybar/scripts/ with executable bit
+
+- name: Deploy waybar scripts
+  ansible.builtin.copy:
+    src: "{{ dotfiles_repo_root }}/{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: '0755'
+    backup: true
+  loop: "{{ waybar_scripts }}"
+  tags: [desktop, waybar, dotfiles]

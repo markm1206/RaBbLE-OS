@@ -1,0 +1,28 @@
+# ansible/roles/desktop/waybar/vars/main.yml
+
+waybar_packages:
+  - waybar
+  - python3-psutil       # Required by some waybar custom modules
+
+# ── Paths ─────────────────────────────────────────────────────────────────────
+waybar_config_dir: "{{ rabble_home }}/.config/waybar"
+
+# ── Config files ──────────────────────────────────────────────────────────────
+# Deployed with mode 0644. src paths relative to dotfiles_repo_root.
+
+waybar_config_files:
+  - src:  config/waybar/config.jsonc
+    dest: "{{ waybar_config_dir }}/config.jsonc"
+  - src:  config/waybar/style.css
+    dest: "{{ waybar_config_dir }}/style.css"
+
+# ── Scripts ───────────────────────────────────────────────────────────────────
+# Deployed with mode 0755.
+
+waybar_scripts:
+  - src:  config/waybar/scripts/battery-detail.sh
+    dest: "{{ waybar_config_dir }}/scripts/battery-detail.sh"
+  - src:  config/waybar/scripts/gpu-usage.sh
+    dest: "{{ waybar_config_dir }}/scripts/gpu-usage.sh"
+  - src:  config/waybar/scripts/power-profile.sh
+    dest: "{{ waybar_config_dir }}/scripts/power-profile.sh"

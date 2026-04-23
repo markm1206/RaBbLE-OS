@@ -1,0 +1,6 @@
+---
+# desktop/terminal/tasks/packages.yml — STUB
+- name: terminal packages — stub
+  ansible.builtin.debug:
+    msg: "spark ~ desktop/terminal >> packages stub, no-op // %DORMANT%"
+  tags: [desktop, terminal, packages]

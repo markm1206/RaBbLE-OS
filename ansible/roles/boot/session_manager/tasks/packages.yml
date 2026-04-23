@@ -1,0 +1,6 @@
+---
+# boot/session_manager/tasks/packages.yml — STUB
+- name: sddm packages — stub
+  ansible.builtin.debug:
+    msg: "spark ~ boot/session_manager >> packages stub, no-op // %DORMANT%"
+  tags: [boot, sddm, packages]

@@ -1,0 +1,6 @@
+---
+# boot/grub2/tasks/config.yml — STUB
+- name: grub2 config — stub
+  ansible.builtin.debug:
+    msg: "spark ~ boot/grub2 >> config stub, no-op // %DORMANT%"
+  tags: [boot, grub, config]

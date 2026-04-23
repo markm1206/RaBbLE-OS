@@ -1,0 +1,12 @@
+---
+# desktop/hyprland/tasks/dotfiles.yml
+# Deploys hyprland scripts to ~/.config/hypr/scripts/ with executable bit
+
+- name: Deploy hypr scripts
+  ansible.builtin.copy:
+    src: "{{ dotfiles_repo_root }}/{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: '0755'
+    backup: true
+  loop: "{{ hypr_scripts }}"
+  tags: [desktop, hyprland, dotfiles]

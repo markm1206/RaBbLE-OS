@@ -1,0 +1,6 @@
+---
+# desktop/shell/zsh/tasks/packages.yml — STUB
+- name: zsh packages — stub
+  ansible.builtin.debug:
+    msg: "spark ~ desktop/shell/zsh >> packages stub, no-op // %DORMANT%"
+  tags: [desktop, shell, zsh, packages]

@@ -1,0 +1,271 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   RaBbLE-OS :: Waybar Stylesheet
+   Theme   : Synthwave void
+   Palette : RaBbLE-OS core — grimoire/RaBbLE.md
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Palette ─────────────────────────────────────────────────────────────── */
+@define-color void      #0a0010;
+@define-color surface   #120025;
+@define-color surface1  #1a0035;
+@define-color surface2  #240045;
+@define-color overlay0  #3d2060;
+@define-color overlay1  #6b4090;
+@define-color muted     #8860aa;
+@define-color text      #e8d5ff;
+@define-color subtext   #c8a8dd;
+@define-color magenta   #ff2d78;
+@define-color cyan      #00f5ff;
+@define-color violet    #bf5fff;
+@define-color green     #50fa7b;
+@define-color yellow    #f1fa8c;
+@define-color orange    #ffb86c;
+@define-color red       #e05c6f;
+@define-color pink      #ff79c6;
+@define-color cyan-dim  #00c8d4;
+
+
+/* ── Global reset ────────────────────────────────────────────────────────── */
+* {
+    font-family: "JetBrains Mono", "Font Awesome 6 Free", "Font Awesome 6 Brands", "Noto Sans Symbols 2", monospace;
+    font-size:      13px;
+    font-weight:    500;
+    min-height:     0;
+    border:         none;
+    border-radius:  0;
+    padding:        0;
+    margin:         0;
+    box-shadow:     none;
+    text-shadow:    none;
+    transition:     all 150ms ease;
+}
+
+
+/* ── Bar root ────────────────────────────────────────────────────────────── */
+window#waybar {
+    background:     rgba(10, 0, 16, 0.85);
+    border-bottom:  1px solid rgba(191, 95, 255, 0.18);
+    color:          @text;
+    /* blur handled by Hyprland layerrule */
+}
+
+window#waybar.empty {
+    background:     transparent;
+}
+
+
+/* ── Generic module pill ─────────────────────────────────────────────────── */
+.modules-left,
+.modules-center,
+.modules-right {
+    padding: 0 4px;
+}
+
+#workspaces,
+#window,
+#network,
+#pulseaudio,
+#pulseaudio.microphone,
+#cpu,
+#temperature,
+#battery,
+#clock,
+#tray {
+    padding:        2px 10px;
+    margin:         3px 1px;
+    border-radius:  8px;
+    background:     rgba(18, 0, 37, 0.6);
+    color:          @text;
+}
+
+
+
+/* ── Workspaces ──────────────────────────────────────────────────────────── */
+#workspaces {
+    background:     transparent;
+    padding:        2px 4px;
+}
+
+#workspaces button {
+    padding:        2px 8px;
+    margin:         0 1px;
+    border-radius:  6px;
+    color:          @overlay1;
+    background:     transparent;
+    font-size:      14px;
+    transition:     all 150ms ease;
+}
+
+#workspaces button:hover {
+    background:     rgba(191, 95, 255, 0.12);
+    color:          @violet;
+}
+
+#workspaces button.active {
+    background:     rgba(191, 95, 255, 0.20);
+    color:          @violet;
+    font-weight:    700;
+}
+
+#workspaces button.urgent {
+    background:     rgba(224, 92, 111, 0.20);
+    color:          @red;
+    animation:      blink 0.8s step-start infinite;
+}
+
+#workspaces button.special {
+    color:          @yellow;
+}
+
+@keyframes blink {
+    50% { opacity: 0.5; }
+}
+
+
+/* ── Window title ────────────────────────────────────────────────────────── */
+#window {
+    color:          @subtext;
+    font-weight:    400;
+}
+
+#window.empty {
+    background:     transparent;
+    color:          transparent;
+}
+
+
+
+/* ── Network ─────────────────────────────────────────────────────────────── */
+#network {
+    color:          @cyan;
+}
+
+#network.disconnected {
+    color:          @red;
+}
+
+#network:hover {
+    background:     rgba(0, 245, 255, 0.12);
+}
+
+
+
+/* ── Audio ───────────────────────────────────────────────────────────────── */
+#pulseaudio {
+    color:          @cyan-dim;
+}
+
+#pulseaudio.muted {
+    color:          @overlay0;
+}
+
+#pulseaudio.microphone {
+    color:          @pink;
+}
+
+#pulseaudio.microphone.source-muted {
+    color:          @overlay0;
+}
+
+#pulseaudio:hover,
+#pulseaudio.microphone:hover {
+    background:     rgba(0, 200, 212, 0.10);
+}
+
+
+/* ── CPU ─────────────────────────────────────────────────────────────────── */
+#cpu {
+    color:          @orange;
+}
+
+#cpu.warning {
+    color:          @yellow;
+}
+
+#cpu.critical {
+    color:          @red;
+    animation:      blink 1s step-start infinite;
+}
+
+
+
+/* ── Temperature ─────────────────────────────────────────────────────────── */
+#temperature {
+    color:          @cyan-dim;
+}
+
+#temperature.critical {
+    color:          @red;
+    animation:      blink 0.5s step-start infinite;
+}
+
+
+
+/* ── Battery ─────────────────────────────────────────────────────────────── */
+#battery {
+    color:          @green;
+}
+
+#battery.good {
+    color:          @cyan-dim;
+}
+
+#battery.warning {
+    color:          @yellow;
+}
+
+#battery.critical {
+    color:          @red;
+    animation:      blink 1s step-start infinite;
+}
+
+#battery.charging {
+    color:          @green;
+}
+
+#battery.full {
+    color:          @green;
+}
+
+
+
+/* ── Clock ───────────────────────────────────────────────────────────────── */
+#clock {
+    color:          @magenta;
+    font-weight:    600;
+}
+
+#clock:hover {
+    background:     rgba(255, 45, 120, 0.10);
+}
+
+
+/* ── Tray ────────────────────────────────────────────────────────────────── */
+#tray {
+    background:     transparent;
+}
+
+#tray > .passive {
+    -gtk-icon-effect: dim;
+}
+
+#tray > .needs-attention {
+    -gtk-icon-effect: highlight;
+    background:     rgba(224, 92, 111, 0.18);
+    border-radius:  6px;
+}
+
+
+/* ── Tooltip ─────────────────────────────────────────────────────────────── */
+tooltip {
+    background:     @surface;
+    border:         1px solid rgba(191, 95, 255, 0.30);
+    border-radius:  10px;
+    color:          @text;
+    padding:        6px 10px;
+}
+
+tooltip label {
+    color:          @text;
+    font-size:      12px;
+}

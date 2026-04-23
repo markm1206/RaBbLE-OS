@@ -1,0 +1,27 @@
+# ansible/inventory/group_vars/asus_proart_p16.yml
+# =============================================================================
+# ASUS ProArt P16 — Hardware & Power Stack
+# All vars here override all.yml defaults for this host group only.
+# =============================================================================
+
+# ── Hardware Identity ─────────────────────────────────────────
+hardware_vendor: "asus"
+form_factor: "laptop"
+
+# ── NPU ───────────────────────────────────────────────────────────────────────
+npu:
+  enabled: true
+  vendor: "amd"
+  family: "xdna2"       # xdna2 = Ryzen AI 300 series (Strix Point / Krackan)
+  driver: "amdxdna"     # kernel module name
+
+# ── Power Stack ───────────────────────────────────────────────
+# Change this line to switch power experiments.
+power_stack_profile: "tuned_only"
+tuned_active_profile: "balanced"
+asus_power_profile: "Balanced"      # Balanced | Performance | Quiet
+
+# ── GPU ───────────────────────────────────────────────────────
+# integrated = dGPU suspended. Current known-good state.
+# Only change if power_stack_profile: full_asus
+gpu_mode: "integrated"

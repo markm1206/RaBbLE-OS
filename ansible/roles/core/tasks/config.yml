@@ -1,0 +1,7 @@
+---
+# core/tasks/config.yml — STUB
+# harmonize ~ core >> no config yet // %DORMANT%
+- name: core config — stub
+  ansible.builtin.debug:
+    msg: "spark ~ core >> config stub, no-op // %DORMANT%"
+  tags: [base, config]

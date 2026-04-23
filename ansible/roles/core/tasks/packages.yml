@@ -1,0 +1,7 @@
+---
+# core/tasks/packages.yml — STUB
+# ingest ~ core >> no packages yet // %DORMANT%
+- name: core packages — stub
+  ansible.builtin.debug:
+    msg: "spark ~ core >> packages stub, no-op // %DORMANT%"
+  tags: [base, packages]
