@@ -91,7 +91,7 @@
             "foot":                     "  Terminal",
             "nvim(.*)":                 "  nvim$1",
             "code(.*)":                 "󰨞  Code$1",
-            "thunar(.*)":               "  Files$1",
+            "dolphin(.*)":              "  Files$1",
             "(.*)Steam(.*)":            "󰓓  Steam"
         }
     },

@@ -1,0 +1,76 @@
+# ~/.bashrc — RaBbLE-OS Bash configuration
+
+[[ $- != *i* ]] && return   # non-interactive: bail out
+
+# ── History ───────────────────────────────────────────────────────────────────
+HISTFILE="${HOME}/.bash_history"
+HISTSIZE=50000
+HISTFILESIZE=50000
+HISTCONTROL=ignoreboth:erasedups    # skip dups + lines starting with space
+HISTTIMEFORMAT="%Y-%m-%d %T "
+shopt -s histappend                 # append, don't overwrite
+shopt -s cmdhist                    # multi-line commands as one entry
+
+# ── Shell options ─────────────────────────────────────────────────────────────
+shopt -s autocd          # type a dir name to cd into it
+shopt -s cdspell         # autocorrect minor cd typos
+shopt -s dirspell        # autocorrect dir names in completion
+shopt -s checkwinsize    # keep LINES/COLUMNS current
+shopt -s globstar        # ** recursive glob
+shopt -s nocaseglob      # case-insensitive globbing
+
+# ── Completion ────────────────────────────────────────────────────────────────
+[[ -r /usr/share/bash-completion/bash_completion ]] && \
+    source /usr/share/bash-completion/bash_completion
+
+# ── PATH ──────────────────────────────────────────────────────────────────────
+export PATH="$HOME/.local/bin:$PATH"
+
+# ── Environment ───────────────────────────────────────────────────────────────
+export EDITOR="nvim"
+export VISUAL="nvim"
+export PAGER="less"
+export LESS="-R --mouse"
+export XDG_CONFIG_HOME="${HOME}/.config"
+export XDG_CACHE_HOME="${HOME}/.cache"
+export XDG_DATA_HOME="${HOME}/.local/share"
+export RABBLE_ROOT="${HOME}/RaBbLE-OS"
+
+# ── Color environment (shared with zsh) ──────────────────────────────────────
+[[ -f "${HOME}/.config/zsh/colors.zsh" ]] && \
+    source "${HOME}/.config/zsh/colors.zsh"
+
+# ── Aliases (shared with zsh) ─────────────────────────────────────────────────
+[[ -f "${HOME}/.config/zsh/aliases.zsh" ]] && \
+    source "${HOME}/.config/zsh/aliases.zsh"
+
+# ── Prompt — RaBbLE two-line (mirrors p10k layout) ────────────────────────────
+# Line 1: [muted]╭─ [violet]~/path [dim]on [cyan]branch
+# Line 2: [muted]╰─ [magenta]❯   (red on error)
+_rabble_prompt() {
+    local _exit=$?
+    local M='\[\e[38;5;198m\]'    # magenta  #ff2d78
+    local C='\[\e[38;5;51m\]'     # cyan     #00f5ff
+    local V='\[\e[38;5;135m\]'    # violet   #bf5fff
+    local G='\[\e[38;5;84m\]'     # green    #50fa7b
+    local R='\[\e[38;5;160m\]'    # red
+    local D='\[\e[38;5;97m\]'     # muted/dim
+    local N='\[\e[0m\]'
+
+    local branch
+    branch=$(git symbolic-ref --short HEAD 2>/dev/null || \
+             git rev-parse --short HEAD 2>/dev/null)
+    local git_seg=''
+    [[ -n "$branch" ]] && git_seg=" ${D}on${N} ${C}${branch}${N}"
+
+    local char_color; (( _exit == 0 )) && char_color="$M" || char_color="$R"
+
+    PS1="${D}╭─${N} ${V}\w${N}${git_seg}\n${D}╰─${N} ${char_color}❯${N} "
+}
+
+PROMPT_COMMAND='history -a; history -n; _rabble_prompt'
+
+# ── Completion ────────────────────────────────────────────────────────────────
+bind 'set completion-ignore-case on'
+bind 'set show-all-if-ambiguous on'
+bind 'TAB:menu-complete'
