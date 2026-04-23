@@ -2,6 +2,7 @@
 BaBbLE/
 
 # AI tooling — local only
+.claude
 CLAUDE.md
 
 # Logs
