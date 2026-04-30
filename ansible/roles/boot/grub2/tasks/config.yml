@@ -1,6 +1,36 @@
 ---
-# boot/grub2/tasks/config.yml — STUB
-- name: grub2 config — stub
-  ansible.builtin.debug:
-    msg: "spark ~ boot/grub2 >> config stub, no-op // %DORMANT%"
+# boot/grub2/tasks/config.yml
+
+- name: Deploy /etc/default/grub
+  ansible.builtin.template:
+    src: grub.j2
+    dest: /etc/default/grub
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  notify: rebuild grub config
   tags: [boot, grub, config]
+
+- name: Re-label existing BLS entries with RaBbLE-OS identity
+  # kernel-install only stamps new kernels from /etc/os-release; existing
+  # entries keep whatever title was baked in at install time. This loop
+  # rewrites every title in-place, preserving the kernel version string.
+  ansible.builtin.shell: |
+    changed=0
+    for entry in /boot/loader/entries/*.conf; do
+      [ -f "$entry" ] || continue
+      ver=$(awk '/^version /{print $2; exit}' "$entry")
+      new_title="{{ rabble_os_name }} — {{ rabble_epoch_name }}${ver:+ (${ver})}"
+      if ! grep -qF "title ${new_title}" "$entry"; then
+        sed -i "s|^title .*|title ${new_title}|" "$entry"
+        changed=1
+      fi
+    done
+    exit $changed
+  become: true
+  register: bls_relabel
+  changed_when: bls_relabel.rc == 1
+  failed_when: bls_relabel.rc > 1
+  notify: rebuild grub config
+  tags: [boot, grub, config, identity]

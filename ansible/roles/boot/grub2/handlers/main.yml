@@ -1,3 +1,4 @@
 ---
-# handlers/main.yml — no handlers yet
-# Common handler to add: run grub2-mkconfig
+- name: rebuild grub config
+  ansible.builtin.command: grub2-mkconfig -o /boot/grub2/grub.cfg
+  become: true
