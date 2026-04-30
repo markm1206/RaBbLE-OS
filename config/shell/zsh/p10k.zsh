@@ -35,7 +35,7 @@
         asdf
     )
 
-    # ── Common ────────────────────────────────────────────────────────────────
+    # ── Common — transparent backgrounds ──────────────────────────────────────
     typeset -g POWERLEVEL9K_MODE=nerdfont-complete
     typeset -g POWERLEVEL9K_ICON_PADDING=none
     typeset -g POWERLEVEL9K_PROMPT_ADD_NEWLINE=true
@@ -44,6 +44,7 @@
     typeset -g POWERLEVEL9K_LEFT_PROMPT_LAST_SEGMENT_END_SYMBOL=
     typeset -g POWERLEVEL9K_RIGHT_PROMPT_FIRST_SEGMENT_START_SYMBOL=
     typeset -g POWERLEVEL9K_LEFT_PROMPT_FIRST_SEGMENT_START_SYMBOL=
+    typeset -g POWERLEVEL9K_BACKGROUND=                           # transparent
 
     # ── Prompt char ───────────────────────────────────────────────────────────
     typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=198  # magenta
@@ -56,7 +57,7 @@
     typeset -g POWERLEVEL9K_PROMPT_CHAR_LEFT_PROMPT_LAST_SEGMENT_END_SYMBOL=
 
     # ── Dir — violet ──────────────────────────────────────────────────────────
-    typeset -g POWERLEVEL9K_DIR_BACKGROUND=0
+    typeset -g POWERLEVEL9K_DIR_BACKGROUND=                    # transparent
     typeset -g POWERLEVEL9K_DIR_FOREGROUND=135               # violet
     typeset -g POWERLEVEL9K_DIR_SHORTENED_FOREGROUND=97      # muted violet
     typeset -g POWERLEVEL9K_DIR_ANCHOR_FOREGROUND=135
@@ -70,38 +71,38 @@
     # ── VCS (git) ─────────────────────────────────────────────────────────────
     typeset -g POWERLEVEL9K_VCS_BRANCH_ICON=' '
     typeset -g POWERLEVEL9K_VCS_UNTRACKED_ICON='?'
-    typeset -g POWERLEVEL9K_VCS_CLEAN_BACKGROUND=0
+    typeset -g POWERLEVEL9K_VCS_CLEAN_BACKGROUND=
     typeset -g POWERLEVEL9K_VCS_CLEAN_FOREGROUND=51          # cyan — clean
-    typeset -g POWERLEVEL9K_VCS_MODIFIED_BACKGROUND=0
+    typeset -g POWERLEVEL9K_VCS_MODIFIED_BACKGROUND=
     typeset -g POWERLEVEL9K_VCS_MODIFIED_FOREGROUND=214      # yellow — modified
-    typeset -g POWERLEVEL9K_VCS_UNTRACKED_BACKGROUND=0
+    typeset -g POWERLEVEL9K_VCS_UNTRACKED_BACKGROUND=
     typeset -g POWERLEVEL9K_VCS_UNTRACKED_FOREGROUND=198     # magenta — untracked
-    typeset -g POWERLEVEL9K_VCS_CONFLICTED_BACKGROUND=0
+    typeset -g POWERLEVEL9K_VCS_CONFLICTED_BACKGROUND=
     typeset -g POWERLEVEL9K_VCS_CONFLICTED_FOREGROUND=160    # red — conflict
-    typeset -g POWERLEVEL9K_VCS_LOADING_BACKGROUND=0
+    typeset -g POWERLEVEL9K_VCS_LOADING_BACKGROUND=
     typeset -g POWERLEVEL9K_VCS_LOADING_FOREGROUND=97
 
     # ── Status ────────────────────────────────────────────────────────────────
     typeset -g POWERLEVEL9K_STATUS_EXTENDED_STATES=true
     typeset -g POWERLEVEL9K_STATUS_OK=false
     typeset -g POWERLEVEL9K_STATUS_OK_FOREGROUND=84          # green
-    typeset -g POWERLEVEL9K_STATUS_OK_BACKGROUND=0
+    typeset -g POWERLEVEL9K_STATUS_OK_BACKGROUND=
     typeset -g POWERLEVEL9K_STATUS_ERROR=true
     typeset -g POWERLEVEL9K_STATUS_ERROR_FOREGROUND=160      # red
-    typeset -g POWERLEVEL9K_STATUS_ERROR_BACKGROUND=0
+    typeset -g POWERLEVEL9K_STATUS_ERROR_BACKGROUND=
     typeset -g POWERLEVEL9K_STATUS_ERROR_SIGNAL_FOREGROUND=198
-    typeset -g POWERLEVEL9K_STATUS_ERROR_SIGNAL_BACKGROUND=0
+    typeset -g POWERLEVEL9K_STATUS_ERROR_SIGNAL_BACKGROUND=
     typeset -g POWERLEVEL9K_STATUS_VERBOSE_SIGNAME=false
 
     # ── Command execution time ─────────────────────────────────────────────────
     typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_THRESHOLD=3
     typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_PRECISION=0
     typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_FOREGROUND=97  # muted
-    typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_BACKGROUND=0
+    typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_BACKGROUND=
     typeset -g POWERLEVEL9K_COMMAND_EXECUTION_TIME_FORMAT='d h m s'
 
     # ── Python virtualenv ─────────────────────────────────────────────────────
-    typeset -g POWERLEVEL9K_VIRTUALENV_BACKGROUND=0
+    typeset -g POWERLEVEL9K_VIRTUALENV_BACKGROUND=
     typeset -g POWERLEVEL9K_VIRTUALENV_FOREGROUND=51         # cyan
     typeset -g POWERLEVEL9K_VIRTUALENV_SHOW_PYTHON_VERSION=false
     typeset -g POWERLEVEL9K_VIRTUALENV_{LEFT,RIGHT}_DELIMITER=
@@ -114,8 +115,8 @@
 
     # ── Background jobs ───────────────────────────────────────────────────────
     typeset -g POWERLEVEL9K_BACKGROUND_JOBS_VERBOSE=false
-    typeset -g POWERLEVEL9K_BACKGROUND_JOBS_BACKGROUND=0
     typeset -g POWERLEVEL9K_BACKGROUND_JOBS_VISUAL_IDENTIFIER_EXPANSION='⇶'
+    typeset -g POWERLEVEL9K_BACKGROUND_JOBS_BACKGROUND=
     typeset -g POWERLEVEL9K_BACKGROUND_JOBS_FOREGROUND=84    # green
 
     # ── Instant prompt ────────────────────────────────────────────────────────
