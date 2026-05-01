@@ -54,6 +54,7 @@ declare -A BUNDLE_SRC=(
   [zsh]="config/shell/zsh"
   [bash]="config/shell/bash"
   [mako]="config/mako"
+  [claude]="config/claude/themes"
 )
 
 declare -A BUNDLE_DEST=(
@@ -66,6 +67,7 @@ declare -A BUNDLE_DEST=(
   [zsh]="${HOME}/.config/zsh"
   [bash]="${HOME}"
   [mako]="${HOME}/.config/mako"
+  [claude]="${HOME}/.claude/themes"
 )
 
 declare -A BUNDLE_DESC=(
@@ -78,9 +80,17 @@ declare -A BUNDLE_DESC=(
   [zsh]="ZSH config (Powerlevel10k + plugins)"
   [bash]="Bash config, aliases, and .zshenv"
   [mako]="Mako notification daemon config (config/mako/config → ~/.config/mako/config)"
+  [claude]="Claude Code RaBbLE theme (themes only — settings.json is not managed)"
 )
 
-BUNDLE_ORDER=(hypr wallpapers waybar quickshell kitty fuzzel zsh bash mako)
+BUNDLE_ORDER=(hypr wallpapers waybar quickshell kitty fuzzel zsh bash mako claude)
+
+# Post-apply hooks — run after a bundle's files are deployed.
+# Only set for bundles that need more than a file copy (e.g. patching a config key).
+# Each value is a shell function name defined below.
+declare -A BUNDLE_POST_APPLY=(
+  [claude]="_post_apply_claude"
+)
 
 declare -A BUNDLE_RELOAD=(
   [hypr]="hyprctl reload"
@@ -93,6 +103,34 @@ declare -A BUNDLE_RELOAD=(
   [bash]="source ${HOME}/.bashrc 2>/dev/null || true"
   [mako]="makoctl reload"
 )
+
+# ── Post-apply hooks ──────────────────────────────────────────────────────────
+
+# Merge the theme key into ~/.claude/settings.json without touching anything else.
+# Never copies or clobbers the whole file — only sets .theme via jq.
+_post_apply_claude() {
+  local settings="${HOME}/.claude/settings.json"
+  if [[ -f "$settings" ]]; then
+    if ! command -v jq &>/dev/null; then
+      warn "jq not found — skipping settings.json theme key update"
+      warn "Run manually: jq '.theme = \"custom:rabble-theme\"' ${settings}"
+      return
+    fi
+    local tmp
+    tmp=$(mktemp)
+    if jq '.theme = "custom:rabble-theme"' "$settings" > "$tmp"; then
+      mv "$tmp" "$settings"
+      info "theme key set in ~/.claude/settings.json"
+    else
+      rm -f "$tmp"
+      warn "jq failed — settings.json theme key not updated"
+    fi
+  else
+    mkdir -p "${HOME}/.claude"
+    printf '{\n  "theme": "custom:rabble-theme"\n}\n' > "$settings"
+    info "created ~/.claude/settings.json with theme key"
+  fi
+}
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -146,6 +184,8 @@ cmd_apply() {
   for bundle in "${bundles[@]}"; do
     pulse "Applying: ${BUNDLE_DESC[$bundle]}"
     walk_bundle "$bundle" _apply_file
+    local post_fn="${BUNDLE_POST_APPLY[$bundle]:-}"
+    [[ -n "$post_fn" ]] && "$post_fn"
     ok "Bundle '${bundle}' deployed. // %CONFIG_APPLIED%"
     echo
   done
