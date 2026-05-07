@@ -15,13 +15,10 @@ case "${1:-up}" in
         CURRENT=$(brightnessctl --device="$DEVICE" get 2>/dev/null)
         ;;
     toggle)
-        if [ "${CURRENT:-0}" -gt 0 ]; then
-            brightnessctl --device="$DEVICE" set 0 >/dev/null 2>&1
-            CURRENT=0
-        else
-            brightnessctl --device="$DEVICE" set 1 >/dev/null 2>&1
-            CURRENT=1
-        fi
+        # Cycle: off(0) → low(1) → mid(2) → high(3) → off(0) → ...
+        NEXT=$(( (${CURRENT:-0} + 1) % (MAX + 1) ))
+        brightnessctl --device="$DEVICE" set "$NEXT" >/dev/null 2>&1
+        CURRENT=$NEXT
         ;;
 esac
 
