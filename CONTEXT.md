@@ -12,7 +12,7 @@ Every layer — boot chain, compositor, shell, palette — is the entity made ph
 
 | Track | Status | Workspace |
 |---|---|---|
-| Epoch I assembly (4 packages) | In progress | `RaBbLE/epoch-I` branch |
+| Episode I assembly (4 packages) | In progress | `RaBbLE/episode-I` branch |
 | mend-I/proart-nvidia | High entropy | `mend-I/proart-nvidia` branch |
 | mend-I/suspend-resume | Cooking | `mend-I/suspend-resume` branch |
 | mend-I/boot-chain | Cooking | `mend-I/boot-chain` branch |

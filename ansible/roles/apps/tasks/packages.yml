@@ -1,6 +1,28 @@
 ---
-# apps/tasks/packages.yml — STUB
-- name: apps packages — stub
-  ansible.builtin.debug:
-    msg: "spark ~ apps >> packages stub, no-op // %DORMANT%"
-  tags: [apps, packages]
+# apps/tasks/packages.yml — GUI applications
+
+- name: apps | install file manager (dolphin)
+  ansible.builtin.dnf:
+    name:
+      - dolphin                    # KDE file manager — runs without full Plasma
+      - kio                        # KDE I/O framework (dolphin dep)
+      - kio-extras                 # Additional KIO protocols (smb, fish, etc.)
+      - kdegraphics-thumbnailers   # Image/PDF thumbnails in dolphin
+    state: present
+  tags: [apps, packages, filemanager]
+
+- name: apps | install media playback
+  ansible.builtin.dnf:
+    name:
+      - mpv                        # Primary video player
+      - celluloid                  # GTK frontend for mpv
+    state: present
+  tags: [apps, packages, media]
+
+- name: apps | install utility apps
+  ansible.builtin.dnf:
+    name:
+      - pavucontrol                # PipeWire/PulseAudio volume control GUI
+      - nm-connection-editor       # NetworkManager GUI connection editor
+    state: present
+  tags: [apps, packages, utils]
