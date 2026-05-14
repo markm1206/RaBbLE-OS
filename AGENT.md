@@ -20,14 +20,11 @@ RaBbLE-OS is the living substrate — an Ansible-driven Fedora 43 + Hyprland des
 | `config/` | Dotfiles and system config |
 | `assets/` | ANSI art, icons, visual assets |
 
-## Pulse Protocol — Commits
+## Commits & Branches
 
-```
-[impulse] ~ [organ] >> [revelation] // %SYSTEM_STATE%
-```
-`spark` new · `harmonize` cleanup · `mend` fix · `transcribe` docs · `ingest` deps · `evolve` epoch
-Full spec: `../RaBbLE-Grimoire/common/RaBbLE-CommitStyle.md`
-**Branch rule:** Work on a named branch. Commit per session. `main` only receives complete, tagged episodes.
+See Grimoire: `../RaBbLE-Grimoire/common/RaBbLE-CommitStyle.md` (Pulse Protocol)
+
+**TL;DR:** `[impulse] ~ [organ] >> [revelation] // %STATE%` — `spark` new · `harmonize` cleanup · `mend` fix · `transcribe` docs · `ingest` deps · `evolve` epoch
 
 ## Rules
 
