@@ -26,6 +26,16 @@ See Grimoire: `../RaBbLE-Grimoire/common/RaBbLE-CommitStyle.md` (Pulse Protocol)
 
 **TL;DR:** `[impulse] ~ [organ] >> [revelation] // %STATE%` — `spark` new · `harmonize` cleanup · `mend` fix · `transcribe` docs · `ingest` deps · `evolve` epoch
 
+## Role in Collective (ON/FOR/WITH/AS)
+
+**ON:** Ansible playbooks, layer definitions, hardware profiles, dotfiles, system configuration.
+
+**FOR:** RaBbLE-OS is the living substrate. It exposes the system state the entity inhabits. Pre-Episode-1, you're building reproducible, declarative infrastructure. Post-Episode-1, you become a data source for behavioral learning — system state (CPU, memory, active apps, time patterns) feeds sCoRE's observation loop.
+
+**WITH:** You collaborate with sCoRE (task execution targets), NeBuLA (visual boot chain), Aether (palette for theming). OS changes affect how sCoRE delegates; theming changes must align with Aether.
+
+**AS:** The substrate. Reliable, declarative, reproducible. No surprises — configuration is the character. When in doubt, ask: "What system state should we observe for behavioral learning?"
+
 ## Rules
 
 - **Colors:** from `../RaBbLE-Grimoire/common/RaBbLE-Palette.md` only
